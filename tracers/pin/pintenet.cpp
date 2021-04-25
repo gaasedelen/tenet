@@ -126,6 +126,8 @@ static VOID OnThreadStart(THREADID tid, CONTEXT* ctxt, INT32 flags, VOID* v)
     // Create a new 'ThreadData' object and set it on the TLS.
     auto& context = *reinterpret_cast<ToolContext*>(v);
     auto data = new ThreadData;
+    memset(data, 0, sizeof(ThreadData));  
+
     data->m_trace = new ofstream;
     context.setThreadLocalData(tid, data);
 
