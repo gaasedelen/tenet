@@ -1078,8 +1078,7 @@ class TraceSegment(object):
         """
         relative_idx = idx - self.base_idx
         start_idx = relative_idx + 1
-
-        if not (0 <= start_idx < self.length):
+        if not (0 <= relative_idx < self.length):
             return {}
 
         # compute a 32bit mask of the registers we need to find
