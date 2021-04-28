@@ -705,7 +705,7 @@ class TraceReader(object):
         address = self.get_ip(idx)
         
         # (reverse) step over any call instructions
-        while len(output) < n and idx > -1:
+        while len(output) < n and idx > 0:
         
             prev_address = dctx.get_prev_insn(address)
             did_step_over = False
@@ -760,7 +760,7 @@ class TraceReader(object):
 
             if prev_idx == -1:
                 prev_idx = idx - 1
-            
+
             prev_address = self.get_ip(prev_idx)
             
             # no address was returned, so the end of trace was reached
@@ -794,7 +794,7 @@ class TraceReader(object):
         address = self.get_ip(idx)
         
         # step over any call instructions
-        while len(output) < n and idx < self.trace.length:
+        while len(output) < n and idx < (self.trace.length - 1):
 
             #
             # get the address for the instruction address after the
@@ -1525,6 +1525,7 @@ class TraceReader(object):
 
         current_idx = idx
         segment = self.trace.get_segment(idx)
+
         while segment:
 
             # fetch the registers of interest
