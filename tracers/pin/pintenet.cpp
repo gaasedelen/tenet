@@ -134,6 +134,7 @@ static VOID OnThreadStart(THREADID tid, CONTEXT* ctxt, INT32 flags, VOID* v)
     char filename[128] = {};
     sprintf(filename, "%s.%u.log", KnobOutputFile.Value().c_str(), tid);
     data->m_trace->open(filename);
+    *data->m_trace << std::hex << std::setw(2) << std::setfill('0');
 
     // Save the recently created thread.
     PIN_GetLock(&context.m_thread_lock, 1);
@@ -229,12 +230,12 @@ VOID record_diff(const CONTEXT * cpu, ADDRINT pc, VOID* v)
             continue;
 
         // save the value for the new register to the log
-        *OutFile << REG_StringShort( (REG) reg) << "=0x" << std::hex << val << ",";
+        *OutFile << REG_StringShort( (REG) reg) << "=0x" << val << ",";
         data->m_cpu[reg] = val;
     }
 
     // always save pc to the log, for every unit of execution
-    *OutFile << PC << "=0x" << std::hex << pc;
+    *OutFile << PC << "=0x" << pc;
 
     //
     // dump memory reads / writes
@@ -245,10 +246,10 @@ VOID record_diff(const CONTEXT * cpu, ADDRINT pc, VOID* v)
         memset(data->m_scratch, 0, data->mem_r_size);
 
         PIN_SafeCopy(data->m_scratch, (const VOID *)data->mem_r_addr, data->mem_r_size);
-        *OutFile << ",mr=0x" << std::hex << data->mem_r_addr << ":";
+        *OutFile << ",mr=0x" << data->mem_r_addr << ":";
 
         for(UINT32 i = 0; i < data->mem_r_size; i++) {
-            *OutFile << std::setw(2) << std::setfill('0') << std::hex << ((unsigned char)data->m_scratch[i] & 0xff);
+            *OutFile << ((unsigned char)data->m_scratch[i] & 0xff);
         }
 
         data->mem_r_size = 0;
@@ -259,10 +260,10 @@ VOID record_diff(const CONTEXT * cpu, ADDRINT pc, VOID* v)
         memset(data->m_scratch, 0, data->mem_r2_size);
 
         PIN_SafeCopy(data->m_scratch, (const VOID *)data->mem_r2_addr, data->mem_r2_size);
-        *OutFile << ",mr=0x" << std::hex << data->mem_r2_addr << ":";
+        *OutFile << ",mr=0x" << data->mem_r2_addr << ":";
 
         for(UINT32 i = 0; i < data->mem_r2_size; i++) {
-            *OutFile << std::setw(2) << std::setfill('0') << std::hex << ((unsigned char)data->m_scratch[i] & 0xff);
+            *OutFile << ((unsigned char)data->m_scratch[i] & 0xff);
         }
 
         data->mem_r2_size = 0;
@@ -273,10 +274,10 @@ VOID record_diff(const CONTEXT * cpu, ADDRINT pc, VOID* v)
         memset(data->m_scratch, 0, data->mem_w_size);
         
         PIN_SafeCopy(data->m_scratch, (const VOID *)data->mem_w_addr, data->mem_w_size);
-        *OutFile << ",mw=0x" << std::hex << data->mem_w_addr << ":";
+        *OutFile << ",mw=0x" << data->mem_w_addr << ":";
 
         for(UINT32 i = 0; i < data->mem_w_size; i++) {
-            *OutFile << std::setw(2) << std::setfill('0') << std::hex << ((unsigned char)data->m_scratch[i] & 0xff);
+            *OutFile << ((unsigned char)data->m_scratch[i] & 0xff);
         }
 
         data->mem_w_size = 0;
