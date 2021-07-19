@@ -17,6 +17,8 @@
 
 using std::ofstream;
 
+ofstream* g_log;
+
 #ifdef __i386__
 #define PC "eip"
 #else
@@ -30,7 +32,7 @@ using std::ofstream;
 static KNOB<std::string> KnobModuleWhitelist(KNOB_MODE_APPEND, "pintool", "w", "",
     "Add a module to the whitelist. If none is specified, every module is white-listed. Example: calc.exe");
 
-KNOB<std::string> KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool", "o", "trace", 
+KNOB<std::string> KnobOutputFilePrefix(KNOB_MODE_WRITEONCE, "pintool", "o", "trace", 
     "Prefix of the output file. If none is specified, 'trace' is used.");
 
 //
@@ -132,7 +134,7 @@ static VOID OnThreadStart(THREADID tid, CONTEXT* ctxt, INT32 flags, VOID* v)
     context.setThreadLocalData(tid, data);
 
     char filename[128] = {};
-    sprintf(filename, "%s.%u.log", KnobOutputFile.Value().c_str(), tid);
+    sprintf(filename, "%s.%u.log", KnobOutputFilePrefix.Value().c_str(), tid);
     data->m_trace->open(filename);
     *data->m_trace << std::hex << std::setw(2) << std::setfill('0');
 
@@ -171,7 +173,7 @@ static VOID OnImageLoad(IMG img, VOID* v)
     ADDRINT low = IMG_LowAddress(img);
     ADDRINT high = IMG_HighAddress(img);
 
-    printf("Loaded image: %p:%p -> %s\n", (void *)low, (void *)high, img_name.c_str());
+    *g_log << "Loaded image: 0x" << low << ":0x" << high << " -> " << img_name << std::endl;
 
     // Save the loaded image with its original full name/path.
     PIN_GetLock(&context.m_loaded_images_lock, 1);
@@ -381,6 +383,8 @@ static VOID Fini(INT32 code, VOID *v)
     for (const auto& data : context.m_terminated_threads) {
         data->m_trace->close();
     }
+
+    g_log->close();
 }
 
 int main(int argc, char * argv[]) {
@@ -393,13 +397,18 @@ int main(int argc, char * argv[]) {
         std::cerr << "Error initializing PIN, PIN_Init failed!" << std::endl;
         return -1;
     }
+
+    auto logFile = KnobOutputFilePrefix.Value() + ".log";
+    g_log = new ofstream;
+    g_log->open(logFile.c_str());
+    *g_log << std::hex;
     
     // Initialize the tool context
     ToolContext *context = new ToolContext();
     context->m_images = new ImageManager();
 
     for (unsigned i = 0; i < KnobModuleWhitelist.NumberOfValues(); ++i) {
-        std::cout << "White-listing image: " << KnobModuleWhitelist.Value(i) << std::endl;
+        *g_log << "White-listing image: " << KnobModuleWhitelist.Value(i) << '\n';
         context->m_images->addWhiteListedImage(KnobModuleWhitelist.Value(i));
         context->m_tracing_enabled = false;
     }
