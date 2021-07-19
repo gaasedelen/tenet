@@ -67,10 +67,10 @@ struct ThreadData
     ADDRINT mem_r2_addr;
     ADDRINT mem_r2_size;
 
-    char m_scratch[128];
-
     // Trace file for thread-specific trace modes
-    ofstream * m_trace;
+    ofstream* m_trace;
+
+    char m_scratch[512 * 2]; // fxsave has the biggest memory operand
 };
 
 //
