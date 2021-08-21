@@ -49,7 +49,7 @@ class PluginPalette(object):
         # initialize the user theme directory
         self._populate_user_theme_dir()
 
-        # load a placeholder theme (unhinted) for inital Lighthoue bring-up
+        # load a placeholder theme (unhinted) for inital Tenet bring-up
         self._load_preferred_theme(True)
         self._initialized = False
 
@@ -349,7 +349,7 @@ class PluginPalette(object):
         # themes that have been copied into the user theme directory
         #
 
-        if fallback:
+        if fallback or is_plugin_dev():
             theme_path = os.path.join(self.get_plugin_theme_dir(), theme_name)
         else:
             theme_path = os.path.join(self.get_user_theme_dir(), theme_name)

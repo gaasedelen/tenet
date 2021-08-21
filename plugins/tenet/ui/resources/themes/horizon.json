@@ -16,7 +16,9 @@
         "light_red":      [170,  57,  57],
         "red":            [118,   0,   0],
         "dark_red":       [ 85,   0,   0],
-        
+
+        "orange":         [255, 165,   0],
+
         "true_yellow":    [255, 255,   0],
         "yellow":         [255, 193,   7],
 
@@ -44,11 +46,12 @@
         "standard_selection_fg":         "white",
         "standard_selection_faded_fg":   "lightest_gray",
 
-        "reg_bg":         "white",
-        "reg_name_fg":    "black",
-        "reg_value_fg":   "black",
-        "reg_changed_fg": "true_red",
-        "reg_selected_bg": "light_blue",
+        "reg_bg": "white",
+
+        "reg_name_fg":               "black",
+        "reg_value_fg":              "black",
+        "reg_changed_trace_fg":      "true_red",
+        "reg_changed_navigation_fg": "orange",
 
         "hex_text_fg":       "black",
         "hex_text_faded_fg": "light_gray",

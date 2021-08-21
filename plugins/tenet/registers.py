@@ -266,16 +266,48 @@ class RegistersModel(object):
         self._registers_changed_callbacks = []
 
     def reset(self):
+
+        # the current timestamp in the trace
         self.idx = -1
-        self.delta = []
+
+        # the { reg_name: reg_value } dict of current register values
         self.registers = {}
+
+        #
+        # the names of the registers that have changed since the previous
+        # chronological timestamp in the trace.
+        #
+        # for example if you singlestep forward, any registers that changed as
+        # a result of 'normal execution' may be highlighted (e.g. red)
+        #
+
+        self.delta_trace = []
+
+        #
+        # the names of registers that have changed since the last navigation
+        # event (eg, skipping between breakpoints, memory accesses).
+        #
+        # this is used to highlight registers that may not have changed as a
+        # result of the previous chronological trace event, but by means of
+        # user navigation within tenet.
+        #
+
+        self.delta_navigation = []
 
         self.focused_reg_name = None
         self.focused_reg_value = None
 
     def set_registers(self, registers, delta=None):
+
+        # compute which registers changed as a result of navigation
+        unchanged = dict(set(self.registers.items()) & set(registers.items()))
+        self.delta_navigation = set([k for k in registers if k not in unchanged])
+
+        # save the register delta that changed since the previous trace timestamp
+        self.delta_trace = delta if delta else []
         self.registers = registers
-        self.delta = delta if delta else []
+
+        # notify the UI / listeners of the model that an update occurred
         self._notify_registers_changed()
 
     #----------------------------------------------------------------------

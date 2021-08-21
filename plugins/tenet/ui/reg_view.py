@@ -389,8 +389,16 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
             else:
                 rendered_value = f'%0{reg_nibbles}X' % reg_value
 
-            if reg_name in self.model.delta:
-                painter.setPen(self.pctx.palette.reg_changed_fg)
+            # color register if its value changed as a result of T-1 (previous instr)
+            if reg_name in self.model.delta_trace:
+                painter.setPen(self.pctx.palette.reg_changed_trace_fg)
+
+            # color register if its value changed as a result of navigation
+            # TODO: disabled for now, because it seemed more confusing than helpful...
+            elif reg_name in self.model.delta_navigation and False:
+                painter.setPen(self.pctx.palette.reg_changed_navigation_fg)
+
+            # no special highlighting, default register value color text
             else:
                 painter.setPen(self.pctx.palette.reg_value_fg)
             
