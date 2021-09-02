@@ -9,6 +9,7 @@
         "lightest_gray":  [221, 221, 221],
         "light_gray":     [160, 160, 160],
         "gray":           [ 80,  80,  80],
+        "medium_gray":    [ 60,  60,  60],
         "dark_gray":      [ 40,  40,  40],
         "darkest_gray":   [ 25,  25,  25],
 
@@ -60,6 +61,7 @@
         "hex_separator":     "black",
 
         "trace_bedrock":     "darkest_gray",
+        "trace_unmapped":     "medium_gray",
         "trace_instruction": "dark_purple",
         "trace_border":      "gray",
 

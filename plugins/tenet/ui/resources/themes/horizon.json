@@ -63,6 +63,7 @@
         "hex_separator":     "black",
 
         "trace_bedrock":     "darkest_gray",
+        "trace_unmapped":    "dark_gray",
         "trace_instruction": "dark_blue",
         "trace_border":      "gray",
 
