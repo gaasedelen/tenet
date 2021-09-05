@@ -67,7 +67,13 @@
         "trace_instruction": "dark_blue",
         "trace_border":      "gray",
 
-        "trace_cursor":           "true_green",
+        "trace_cell_wall": "medium_gray",
+        "trace_cell_wall_contrast": "black",
+
+        "trace_cursor":           "true_red",
+        "trace_cursor_border":    "black",
+        "trace_cursor_highlight": "true_green",
+        
         "trace_selection":        "true_green",
         "trace_selection_border": "true_green",
         

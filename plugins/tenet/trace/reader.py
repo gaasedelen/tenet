@@ -412,8 +412,9 @@ class TraceReader(object):
         """
         Return a list of timestamps (idx) that executed the given address, in the given slice.
         """
-        assert 0 <= start_idx < end_idx <= self.trace.length, f"0 <= {start_idx:,} < {end_idx:,} <= {self.trace.length:,}"
+        assert 0 <= start_idx <= end_idx, f"0 <= {start_idx:,} <= {end_idx:,}"
         assert resolution > 0
+
         og_res = resolution
         resolution = max(1, resolution)
         #print(f"Fetching executions from {start_idx:,} --> {end_idx:,} (res {og_res:0.2f}, normalized {resolution:0.2f}) for address 0x{address:08X}")
@@ -424,7 +425,8 @@ class TraceReader(object):
             return []
 
         #print(f" - Mapped Address: {mapped_address}")
-        idx, output = start_idx, []
+        idx = max(0, start_idx)
+        end_idx = min(end_idx, self.trace.length)
 
         while idx < end_idx:
 
