@@ -86,7 +86,7 @@ class HexController(object):
     
     def attach_reader(self, reader):
         """
-        Attach this controller to a trace reader.
+        Attach a trace reader to this controller.
         """
         self.reader = reader
         self.model.pointer_size = reader.arch.POINTER_SIZE
@@ -104,7 +104,7 @@ class HexController(object):
 
     def detach_reader(self):
         """
-        Attach this controller to a trace reader.
+        Detach the trace reader from this controller.
         """
         self.reader = None
         self.model.reset()
@@ -188,7 +188,6 @@ class HexController(object):
         self.model.mask = memory.mask
         self.model.delta = self.reader.delta
 
-        #self._refresh_display()
         if self.view:
             self.view.refresh()
 

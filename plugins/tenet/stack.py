@@ -86,7 +86,7 @@ class StackController(HexController):
         #
 
         if self.view:
-            if not (self.view._select_begin == self.view._select_end == -1):
+            if not (self.view._selection_start == self.view._selection_end == -1):
                 self.refresh_memory()
                 self.view.refresh()
                 return

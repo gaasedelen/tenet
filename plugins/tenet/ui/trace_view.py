@@ -212,7 +212,7 @@ class TraceBar(QtWidgets.QWidget):
         self.end_idx = end_idx
 
         # update drawing metrics, note that this can 'tweak' end_idx to improve cell rendering
-        self._refresh_cell_metrics()
+        self._refresh_painting_metrics()
 
         # compute the number of instructions visible
         self._last_trace_idx = min(self.reader.trace.length, self.end_idx)
@@ -254,7 +254,7 @@ class TraceBar(QtWidgets.QWidget):
         self._idx_writes = []
         self._idx_executions = []
 
-        self._refresh_cell_metrics()
+        self._refresh_painting_metrics()
         self.refresh()
 
     def refresh(self, *args):
@@ -266,28 +266,6 @@ class TraceBar(QtWidgets.QWidget):
     #----------------------------------------------------------------------
     # Qt Overloads
     #----------------------------------------------------------------------
-
-    def wheelEvent(self, event):
-        """
-        Qt overload to capture wheel events.
-        """
-        if not self.reader:
-            return
-
-        # holding the shift key while scrolling is used to 'step over'
-        mod_keys = QtGui.QGuiApplication.keyboardModifiers()
-        step_over = bool(mod_keys & QtCore.Qt.ShiftModifier)
-
-        # scrolling up, so step 'backwards' through the trace
-        if event.angleDelta().y() > 0:
-            self.reader.step_backward(1, step_over)
-
-        # scrolling down, so step 'forwards' through the trace
-        elif event.angleDelta().y() < 0:
-            self.reader.step_forward(1, step_over)
-
-        self.refresh()
-        event.accept()
         
     def mouseMoveEvent(self, event):
         """
@@ -331,7 +309,7 @@ class TraceBar(QtWidgets.QWidget):
 
         # if the left mouse button was released...
         if event.button() == QtCore.Qt.MouseButton.LeftButton:
-
+            
             #
             # no selection origin? this means the click probably started
             # off this widget, and the user moved their mouse over viz
@@ -356,6 +334,28 @@ class TraceBar(QtWidgets.QWidget):
         self._hovered_idx = INVALID_IDX
         self.refresh()
 
+    def wheelEvent(self, event):
+        """
+        Qt overload to capture wheel events.
+        """
+        if not self.reader:
+            return
+
+        # holding the shift key while scrolling is used to 'step over'
+        mod_keys = QtGui.QGuiApplication.keyboardModifiers()
+        step_over = bool(mod_keys & QtCore.Qt.ShiftModifier)
+
+        # scrolling up, so step 'backwards' through the trace
+        if event.angleDelta().y() > 0:
+            self.reader.step_backward(1, step_over)
+
+        # scrolling down, so step 'forwards' through the trace
+        elif event.angleDelta().y() < 0:
+            self.reader.step_forward(1, step_over)
+
+        self.refresh()
+        event.accept()
+        
     def resizeEvent(self, _):
         """
         Qt overload to capture resize events for the widget.
@@ -380,9 +380,9 @@ class TraceBar(QtWidgets.QWidget):
         """
         self.set_bounds(self.start_idx, self.end_idx)
 
-    def _refresh_cell_metrics(self):
+    def _refresh_painting_metrics(self):
         """
-        Recompute the execution cell drawing metrics for the trace visualization.
+        Refresh any metrics and calculations required to paint the widget.
         """
         self._cell_height = 0
         self._cell_border = 0
@@ -1224,6 +1224,9 @@ class TraceView(QtWidgets.QWidget):
     #--------------------------------------------------------------------------
 
     def _ctx_menu_handler(self, position):
+        """
+        Handle a right click event (populate/show context menu).
+        """
         action = self._menu.exec_(self.mapToGlobal(position))
         if action == self._action_load:
             self.pctx.interactive_load_trace(True)

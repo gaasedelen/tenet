@@ -18,6 +18,9 @@ class HexView(QtWidgets.QAbstractScrollArea):
         self.model = model
         self._palette = controller.pctx.palette
 
+        self.setFocusPolicy(QtCore.Qt.StrongFocus)
+        self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+
         font = QtGui.QFont("Courier", pointSize=normalize_font(9))
         font.setStyleHint(QtGui.QFont.TypeWriter)
         self.setFont(font)
@@ -27,19 +30,16 @@ class HexView(QtWidgets.QAbstractScrollArea):
         self._char_height = int(fm.tightBoundingRect('9').height() * 1.75)
         self._char_descent = self._char_height - fm.descent()*0.75
 
-        self._select_init = -1
-        self._select_begin = -1
-        self._select_end = -1
+        self._selection_origin = -1
+        self._selection_start = -1
+        self._selection_end = -1
         self._region_access = False
-
-        self.setFocusPolicy(QtCore.Qt.StrongFocus)
-        self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
 
         self._init_ctx_menu()
 
     def _init_ctx_menu(self):
         """
-        TODO
+        Initialize the right click context menu actions.
         """
 
         # create actions to show in the context menu
@@ -81,7 +81,190 @@ class HexView(QtWidgets.QAbstractScrollArea):
         self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self._ctx_menu_handler)
 
+    #-------------------------------------------------------------------------
+    # Properties
+    #-------------------------------------------------------------------------
+
+    @property
+    def num_lines_visible(self):
+        """
+        Return the number of lines visible in the hex view.
+        """
+        area_size = self.viewport().size()
+        first_line_idx = self.verticalScrollBar().value()
+        last_line_idx = (first_line_idx + area_size.height() // self._char_height) + 1
+        lines_visible = last_line_idx - first_line_idx
+        return lines_visible
+    
+    @property
+    def num_bytes_visible(self):
+        """
+        Return the number of bytes visible in the hex view.
+        """
+        return self.model.num_bytes_per_line * self.num_lines_visible
+
+    @property
+    def selection_size(self):
+        """
+        Return the number of bytes selected in the hex view.
+        """
+        if self._selection_end == self._selection_start == -1:
+            return 0
+        return self._selection_end - self._selection_start
+
+    #-------------------------------------------------------------------------
+    # Internal
+    #-------------------------------------------------------------------------
+
+    def refresh(self):
+        """
+        Refresh the hex view.
+        """
+        self._refresh_painting_metrics()
+        self.viewport().update()
+
+    def _refresh_painting_metrics(self):
+        """
+        Refresh any metrics and calculations required to paint the widget.
+        """
+
+        # 2 chars per byte of data, eg '00'
+        self._chars_in_line  = self.model.num_bytes_per_line * 2
+
+        # add 1 char for each space between elements (bytes, dwords, qwords...)
+        self._chars_in_line += (self.model.num_bytes_per_line // HEX_TYPE_WIDTH[self.model.hex_format])
+
+        # the x position to draw the text address (left side of view)
+        self._pos_addr = self._char_width // 2
+
+        # the width of the column, 2 nibbles (chars) per byte of a pointer
+        # -- +1 for padding, (eg, 1/2 char on each side)
+        self._width_addr = (self.model.pointer_size * 2 + 1) * self._char_width
+
+        # the x position and width of the hex bytes region (center section of view)
+        self._pos_hex = self._width_addr + self._char_width
+        self._width_hex = self._chars_in_line * self._char_width
+
+        # the x position and width of the auxillary region (right section of view)
+        self._pos_aux = self._pos_hex + self._width_hex 
+        self._width_aux = (self.model.num_bytes_per_line * self._char_width) + self._char_width * 2
+
+        # enforce a minimum view width, to ensure all text stays visible
+        self.setMinimumWidth(self._pos_aux + self._width_aux)
+
+    def full_size(self):
+        """
+        TODO
+        """
+        if not self.model.data:
+            return QtCore.QSize(0, 0)
+
+        width = self._pos_aux + (self.model.num_bytes_per_line * self._char_width)
+        height = len(self.model.data) // self.model.num_bytes_per_line
+        if len(self.model.data) % self.model.num_bytes_per_line:
+            height += 1
+
+        height *= self._char_height
+
+        return QtCore.QSize(width, height)
+
+    def point_to_index(self, position):
+        """
+        Convert a QPoint (x, y) on the hex view window to a byte index.
+        """
+        padding = self._char_width // 2
+
+        if position.x() < (self._pos_hex - padding):
+            return -1
+
+        if position.x() >= (self._pos_hex + self._width_hex - padding):
+            return -1
+
+        # convert 'gloabl' x in the viewport, to an x that is 'relative' to the hex area
+        hex_x = (position.x() - self._pos_hex) - (self._char_width // 2)
+        #print("- Hex x", hex_x)
+
+        # the number of items (eg, bytes, qwords) per line
+        num_items = self.model.num_bytes_per_line // HEX_TYPE_WIDTH[self.model.hex_format]
+        #print("- Num items", num_items)
+
+        # compute the pixel width each rendered item on the line takes up
+        item_width = (self._char_width * 2) * HEX_TYPE_WIDTH[self.model.hex_format]
+        item_width_padded = item_width + self._char_width
+        #print("- Item Width", item_width)
+        #print("- Item Width Padded", item_width_padded)
+
+        # compute the item index on a line (the x-axis) that the point falls within
+        item_index = int(hex_x // item_width_padded)
+        #print("- Item X", item_index)
+
+        # compute which byte is hovered in the item
+        item_byte_x = int(hex_x % item_width_padded)
+        item_byte_index = int(item_byte_x // (self._char_width * 2))
+        #print("- Item Byte X", item_byte_x)
+        #print("- Item Byte Index", item_byte_index)
+
+        if self.model.hex_format != HexType.BYTE:
+            item_byte_index = HEX_TYPE_WIDTH[self.model.hex_format] - item_byte_index - 1
+
+        byte_x = item_index * HEX_TYPE_WIDTH[self.model.hex_format] + item_byte_index
+
+        # compute the line number (the y-axis) that the point falls within
+        byte_y = position.y() // self._char_height
+        #print("- Byte (X, Y)", byte_x, byte_y)
+
+        # compute the final byte index from the start address in the window
+        byte_index = (byte_y * self.model.num_bytes_per_line) + byte_x
+        #print("- Byte Index", byte_index)
+
+        return byte_index
+
+    def point_to_address(self, position):
+        """
+        Convert a QPoint (x, y) on the hex view window to an address.
+        """
+        byte_index = self.point_to_index(position)
+        if byte_index == -1:
+            return -1
+
+        byte_address = self.model.address + byte_index
+        return byte_address 
+
+    def reset_selection(self, address=-1):
+        """
+        Clear the stored user memory selection.
+        """
+        self._region_access = False
+
+        if address == -1:
+            self._selection_origin = address
+            self._selection_start = address
+            self._selection_end = address
+        else:
+            self._selection_origin = address
+            self._selection_start = address
+            self._selection_end = address + 1
+
+    def set_selection(self, address):
+        """
+        Set the user memory selection.
+        """
+
+        if address >= self._selection_origin:
+            self._selection_end = address + 1
+            self._selection_start = self._selection_origin
+        else:
+            self._selection_start = address
+            self._selection_end = self._selection_origin + 1
+    
+    #--------------------------------------------------------------------------
+    # Signals
+    #--------------------------------------------------------------------------
+
     def _ctx_menu_handler(self, position):
+        """
+        Handle a right click event (populate/show context menu).
+        """
         menu = QtWidgets.QMenu()
 
         #
@@ -113,16 +296,16 @@ class HexView(QtWidgets.QAbstractScrollArea):
         #
 
         if action == self._action_find_accesses:
-            byte_address = self._select_begin
+            byte_address = self._selection_start
             self._region_access = True
             self.controller.focus_region_access(byte_address, self.selection_size)
             self.viewport().update()
 
         elif action == self._action_follow_in_dump:
-            self.controller.follow_in_dump(self._select_begin)
+            self.controller.follow_in_dump(self._selection_start)
 
         elif action == self._action_copy:
-            self.controller.copy_selection(self._select_begin, self._select_end)
+            self.controller.copy_selection(self._selection_start, self._selection_end)
 
         else:
 
@@ -132,7 +315,7 @@ class HexView(QtWidgets.QAbstractScrollArea):
             except:
                 pass
 
-            address = self._select_begin
+            address = self._selection_start
             length = self.selection_size
 
             if action in self._action_first:
@@ -144,98 +327,55 @@ class HexView(QtWidgets.QAbstractScrollArea):
             elif action in self._action_final:
                 self.controller.reader.seek_to_final(address, bp_type, length)
 
-    #-------------------------------------------------------------------------
-    # Properties
-    #-------------------------------------------------------------------------
+    #----------------------------------------------------------------------
+    # Qt Overloads
+    #----------------------------------------------------------------------
 
-    @property
-    def num_lines_visible(self):
+    def mouseMoveEvent(self, event):
         """
-        Return the number of lines visible in the hex view.
+        Qt overload to capture mouse movement events.
         """
-        area_size = self.viewport().size()
-        first_line_idx = self.verticalScrollBar().value()
-        last_line_idx = (first_line_idx + area_size.height() // self._char_height) + 1
-        lines_visible = last_line_idx - first_line_idx
-        return lines_visible
-    
-    @property
-    def num_bytes_visible(self):
-        """
-        Return the number of bytes visible in the hex view.
-        """
-        return self.model.num_bytes_per_line * self.num_lines_visible
+        byte_address = self.point_to_address(event.pos())
+        #print("Move 0x%08X" % byte_address)
 
-    @property
-    def selection_size(self):
-        """
-        Return the number of bytes selected in the hex view.
-        """
-        if self._select_end == self._select_begin == -1:
-            return 0
-        return self._select_end - self._select_begin
-
-    #-------------------------------------------------------------------------
-    # Internal
-    #-------------------------------------------------------------------------
-
-    def refresh(self):
-        self._refresh_view_settings()
-        #self.refresh_memory()
+        self.set_selection(byte_address)
         self.viewport().update()
 
-    def _refresh_display(self):
-        print("TODO: Recompute / redraw the hex display (but do not fetch new data)")
+    def mousePressEvent(self, event):
+        """
+        Qt overload to capture mouse button presses.
+        """
+        byte_address = self.point_to_address(event.pos())
+        #print("Clicked 0x%08X (press event)" % byte_address)
+
+        if event.button() == QtCore.Qt.LeftButton:
+            if byte_address != -1:
+                self.reset_selection(byte_address)
+            else:
+                self.reset_selection()
+
+        elif event.button() == QtCore.Qt.RightButton:
+            if self.selection_size <= 1 and byte_address != -1:
+                self.reset_selection(byte_address)
+
         self.viewport().update()
 
-    def _refresh_view_settings(self):
+    def mouseReleaseEvent(self, event):
+        """
+        Qt overload to capture mouse button releases.
+        """
+        byte_address = self.point_to_address(event.pos())
+        #print("Release 0x%08X" % byte_address)
 
-        # 2 chars per byte of data, eg '00'
-        self._chars_in_line  = self.model.num_bytes_per_line * 2
+        if self.selection_size == 1:
+            self.controller.focus_address_access(byte_address)
 
-        # add 1 char for each space between elements (bytes, dwords, qwords...)
-        self._chars_in_line += (self.model.num_bytes_per_line // HEX_TYPE_WIDTH[self.model.hex_format])
-
-        # the x position to draw the text address (left side of view)
-        self._pos_addr = self._char_width // 2
-
-        # the width of the column, 2 nibbles (chars) per byte of a pointer
-        # -- +1 for padding, (eg, 1/2 char on each side)
-        self._width_addr = (self.model.pointer_size * 2 + 1) * self._char_width
-
-        # the x position and width of the hex bytes region (center section of view)
-        self._pos_hex = self._width_addr + self._char_width
-        self._width_hex = self._chars_in_line * self._char_width
-
-        # the x position and width of the auxillary region (right section of view)
-        self._pos_aux = self._pos_hex + self._width_hex 
-        self._width_aux = (self.model.num_bytes_per_line * self._char_width) + self._char_width * 2
-
-        # enforce a minimum view width, to ensure all text stays visible
-        self.setMinimumWidth(self._pos_aux + self._width_aux)
-
-    def full_size(self):
-        if not self.model.data:
-            return QtCore.QSize(0, 0)
-
-        width = self._pos_aux + (self.model.num_bytes_per_line * self._char_width)
-        height = len(self.model.data) // self.model.num_bytes_per_line
-        if len(self.model.data) % self.model.num_bytes_per_line:
-            height += 1
-
-        height *= self._char_height
-
-        return QtCore.QSize(width, height)
-
-    def resizeEvent(self, event):
-        super(HexView, self).resizeEvent(event)
-        self._refresh_view_settings()
-        self.controller.set_data_size(self.num_bytes_visible)
-        #self.model.last_address = self.model.address + self.num_bytes_visible
-        #if self._reader:
-        #    self.refresh_memory()
+        self.viewport().update()
 
     def keyPressEvent(self, e):
+        """
+        Qt overload to capture key press events.
+        """
         if e.key() == QtCore.Qt.Key_G:
             import ida_kernwin, ida_idaapi
             address = ida_kernwin.ask_addr(self.model.address, "Jump to address in memory")
@@ -244,20 +384,82 @@ class HexView(QtWidgets.QAbstractScrollArea):
                 e.accept()
         return super(HexView, self).keyPressEvent(e)
 
+    def wheelEvent(self, event):
+        """
+        Qt overload to capture wheel events.
+        """
+
+        #
+        # first, we will attempt special handling of the case where a user
+        # 'scrolls' up or down when hovering their cursor over a byte they
+        # have selected...
+        #
+
+        # compute the address of the hovered byte (if there is one...)
+        address = self.point_to_address(event.pos())
+        if address != -1:
+
+            #print(f"SCROLLING {self._select_begin:08X} <= {address:08X} <= {self._select_end:08X}")
+
+            # is the hovered byte one that is selected?
+            if (self._selection_start <= address <= self._selection_end):
+                access_type = BreakpointType.ACCESS
+                length = self.selection_size
+
+                #
+                # if a region is selected with an 'access' breakpoint on it,
+                # use the start address of the selected region instead for
+                # the region-based seeks
+                #
+
+                if self.selection_size > 1 and self._region_access:
+                    address = self._selection_start
+
+                # scrolled 'up'
+                if event.angleDelta().y() > 0:
+                    self.controller.reader.seek_to_prev(address, access_type, length)
+
+                # scrolled 'down'
+                elif event.angleDelta().y() < 0:
+                    self.controller.reader.seek_to_next(address, access_type, length)
+
+                # consume the event
+                event.accept()
+                return
+
+        #
+        # normal 'scroll' on the hex window.. scroll up or down into new
+        # regions of memory...
+        #
+
+        if event.angleDelta().y() > 0:
+            self.controller.navigate(self.model.address - self.model.num_bytes_per_line)
+
+        elif event.angleDelta().y() < 0:
+            self.controller.navigate(self.model.address + self.model.num_bytes_per_line)
+
+        event.accept()
+
+    def resizeEvent(self, event):
+        """
+        Qt overload to capture resize events for the widget.
+        """
+        super(HexView, self).resizeEvent(event)
+        self._refresh_painting_metrics()
+        self.controller.set_data_size(self.num_bytes_visible)
+
     #-------------------------------------------------------------------------
     # Painting
     #-------------------------------------------------------------------------
 
     def paintEvent(self, event):
-        #super(HexView, self).paintEvent(event)
-
+        """
+        Qt overload of widget painting.
+        """
         if not self.model.data:
             return
 
         painter = QtGui.QPainter(self.viewport())
-
-        area_size = self.viewport().size()
-        widget_size = self.full_size()
 
         # paint background of entire scroll area
         painter.fillRect(event.rect(), self._palette.hex_data_bg)
@@ -440,7 +642,7 @@ class HexView(QtWidgets.QAbstractScrollArea):
             fg_color = self._palette.mem_read_fg
 
         # a selected byte
-        if self._select_begin <= byte_address < self._select_end:
+        if self._selection_start <= byte_address < self._selection_end:
 
             # the selection is a focused, navigation breakpoint
             if self.selection_size == 1 or self._region_access:
@@ -529,175 +731,3 @@ class HexView(QtWidgets.QAbstractScrollArea):
         x += num_chars * self._char_width
 
         return (byte_idx + self.model.pointer_size, x, y)
-
-    #-------------------------------------------------------------------------
-    #
-    #-------------------------------------------------------------------------
-
-    def mousePressEvent(self, event):
-        byte_address = self.point_to_address(event.pos())
-        #print("Clicked 0x%08X (press event)" % byte_address)
-
-        if event.button() == QtCore.Qt.LeftButton:
-            if byte_address != -1:
-                self.reset_selection(byte_address)
-            else:
-                self.reset_selection()
-
-        elif event.button() == QtCore.Qt.RightButton:
-            if self.selection_size <= 1 and byte_address != -1:
-                self.reset_selection(byte_address)
-
-        self.viewport().update()
-
-    def mouseMoveEvent(self, event):
-        byte_address = self.point_to_address(event.pos())
-        #print("Move 0x%08X" % byte_address)
-
-        self.set_selection(byte_address)
-        self.viewport().update()
-
-    def mouseReleaseEvent(self, event):
-        byte_address = self.point_to_address(event.pos())
-        #print("Release 0x%08X" % byte_address)
-
-        if self.selection_size == 1:
-            self.controller.focus_address_access(byte_address)
-
-        self.viewport().update()
-
-    def point_to_index(self, position):
-        """
-        Convert a QPoint (x, y) on the hex view window to a byte index.
-        """
-        padding = self._char_width // 2
-
-        if position.x() < (self._pos_hex - padding):
-            return -1
-
-        if position.x() >= (self._pos_hex + self._width_hex - padding):
-            return -1
-
-        # convert 'gloabl' x in the viewport, to an x that is 'relative' to the hex area
-        hex_x = (position.x() - self._pos_hex) - (self._char_width // 2)
-        #print("- Hex x", hex_x)
-
-        # the number of items (eg, bytes, qwords) per line
-        num_items = self.model.num_bytes_per_line // HEX_TYPE_WIDTH[self.model.hex_format]
-        #print("- Num items", num_items)
-
-        # compute the pixel width each rendered item on the line takes up
-        item_width = (self._char_width * 2) * HEX_TYPE_WIDTH[self.model.hex_format]
-        item_width_padded = item_width + self._char_width
-        #print("- Item Width", item_width)
-        #print("- Item Width Padded", item_width_padded)
-
-        # compute the item index on a line (the x-axis) that the point falls within
-        item_index = int(hex_x // item_width_padded)
-        #print("- Item X", item_index)
-
-        # compute which byte is hovered in the item
-        item_byte_x = int(hex_x % item_width_padded)
-        item_byte_index = int(item_byte_x // (self._char_width * 2))
-        #print("- Item Byte X", item_byte_x)
-        #print("- Item Byte Index", item_byte_index)
-
-        if self.model.hex_format != HexType.BYTE:
-            item_byte_index = HEX_TYPE_WIDTH[self.model.hex_format] - item_byte_index - 1
-
-        byte_x = item_index * HEX_TYPE_WIDTH[self.model.hex_format] + item_byte_index
-
-        # compute the line number (the y-axis) that the point falls within
-        byte_y = position.y() // self._char_height
-        #print("- Byte (X, Y)", byte_x, byte_y)
-
-        # compute the final byte index from the start address in the window
-        byte_index = (byte_y * self.model.num_bytes_per_line) + byte_x
-        #print("- Byte Index", byte_index)
-
-        return byte_index
-
-    def point_to_address(self, position):
-        """
-        Convert a QPoint (x, y) on the hex view window to an address.
-        """
-        byte_index = self.point_to_index(position)
-        if byte_index == -1:
-            return -1
-
-        byte_address = self.model.address + byte_index
-        return byte_address 
-
-    def reset_selection(self, address=-1):
-        self._region_access = False
-
-        if address == -1:
-            self._select_init = address
-            self._select_begin = address
-            self._select_end = address
-        else:
-            self._select_init = address
-            self._select_begin = address
-            self._select_end = address + 1
-
-    def set_selection(self, address):
-        
-        if address >= self._select_init:
-            self._select_end = address + 1
-            self._select_begin = self._select_init
-        else:
-            self._select_begin = address
-            self._select_end = self._select_init + 1
-
-    def wheelEvent(self, event):
-
-        #
-        # first, we will attempt special handling of the case where a user
-        # 'scrolls' up or down when hovering their cursor over a byte they
-        # have selected...
-        #
-
-        # compute the address of the hovered byte (if there is one...)
-        address = self.point_to_address(event.pos())
-        if address != -1:
-
-            #print(f"SCROLLING {self._select_begin:08X} <= {address:08X} <= {self._select_end:08X}")
-
-            # is the hovered byte one that is selected?
-            if (self._select_begin <= address <= self._select_end):
-                access_type = BreakpointType.ACCESS
-                length = self.selection_size
-
-                #
-                # if a region is selected with an 'access' breakpoint on it,
-                # use the start address of the selected region instead for
-                # the region-based seeks
-                #
-
-                if self.selection_size > 1 and self._region_access:
-                    address = self._select_begin
-
-                # scrolled 'up'
-                if event.angleDelta().y() > 0:
-                    self.controller.reader.seek_to_prev(address, access_type, length)
-
-                # scrolled 'down'
-                elif event.angleDelta().y() < 0:
-                    self.controller.reader.seek_to_next(address, access_type, length)
-
-                # consume the event
-                event.accept()
-                return
-
-        #
-        # normal 'scroll' on the hex window.. scroll up or down into new
-        # regions of memory...
-        #
-
-        if event.angleDelta().y() > 0:
-            self.controller.navigate(self.model.address - self.model.num_bytes_per_line)
-
-        elif event.angleDelta().y() < 0:
-            self.controller.navigate(self.model.address + self.model.num_bytes_per_line)
-
-        event.accept()

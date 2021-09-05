@@ -124,7 +124,7 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
 
     def _init_ctx_menu(self):
         """
-        TODO
+        Initialize the right click context menu actions.
         """
 
         # create actions to show in the context menu
@@ -187,6 +187,9 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
             y += self._char_height
 
     def _ctx_menu_handler(self, position):
+        """
+        Handle a right click event (populate/show context menu).
+        """
 
         # if no register was right clicked, there's no reason to show a menu
         reg_name = self._pos_to_reg(position)

@@ -587,7 +587,7 @@ class TraceFile(object):
         """
         seg = self.get_segment(idx)
         if not seg:
-            raise ValueError("Invalid IDX")
+            raise ValueError("Invalid IDX %u" % idx)
         return seg.get_ip(idx)
 
     def get_mapped_ip(self, ip):
