@@ -1,5 +1,6 @@
 import bisect
 import struct
+import logging
 
 #-----------------------------------------------------------------------------
 # reader.py -- Trace Reader
@@ -34,6 +35,8 @@ from tenet.util.log import pmsg
 from tenet.util.misc import register_callback, notify_callback
 from tenet.trace.file import TraceFile
 from tenet.trace.types import TraceMemory
+
+logger = logging.getLogger("Tenet.Trace.Reader")
 
 class TraceDelta(object):
     """
@@ -103,8 +106,6 @@ class TraceReader(object):
     def delta(self):
         """
         Return the state delta since the previous timestamp.
-
-        TODO: is this even used anymore?
         """
         read_set, write_set = set(), set()
 
@@ -180,16 +181,14 @@ class TraceReader(object):
             if length == 1:
                 idx = self.find_next_read(address, start_idx)
             else:
-                #idx = self.find_next_region_read(address, length, start_idx)
-                raise NotImplementedError("TODO: Implement find_next_region_read")
+                idx = self.find_next_region_read(address, length, start_idx)
 
         elif access_type == BreakpointType.WRITE:
 
             if length == 1:
                 idx = self.find_next_write(address, start_idx)
             else:
-                #idx = self.find_next_region_write(address, length, start_idx)
-                raise NotImplementedError("TODO: Implement find_next_region_write")
+                idx = self.find_next_region_write(address, length, start_idx)
 
         elif access_type == BreakpointType.ACCESS:
 
@@ -226,16 +225,14 @@ class TraceReader(object):
             if length == 1:
                 idx = self.find_prev_read(address, start_idx)
             else:
-                #idx = self.find_prev_region_read(address, length, start_idx)
-                raise NotImplementedError("TODO: Implement find_prev_region_read")
+                idx = self.find_prev_region_read(address, length, start_idx)
 
         elif access_type == BreakpointType.WRITE:
 
             if length == 1:
                 idx = self.find_prev_write(address, start_idx)
             else:
-                #idx = self.find_prev_region_write(address, length, start_idx)
-                raise NotImplementedError("TODO: Implement find_prev_region_write")
+                idx = self.find_prev_region_write(address, length, start_idx)
 
         elif access_type == BreakpointType.ACCESS:
 
@@ -415,16 +412,15 @@ class TraceReader(object):
         assert 0 <= start_idx <= end_idx, f"0 <= {start_idx:,} <= {end_idx:,}"
         assert resolution > 0
 
-        og_res = resolution
         resolution = max(1, resolution)
-        #print(f"Fetching executions from {start_idx:,} --> {end_idx:,} (res {og_res:0.2f}, normalized {resolution:0.2f}) for address 0x{address:08X}")
+        logger.debug(f"Fetching executions from {start_idx:,} --> {end_idx:,} (res {resolution:0.2f}, normalized {resolution:0.2f}) for address 0x{address:08X}")
 
         try:
             mapped_address = self.trace.get_mapped_ip(address)
         except ValueError:
             return []
 
-        #print(f" - Mapped Address: {mapped_address}")
+        output = []
         idx = max(0, start_idx)
         end_idx = min(end_idx, self.trace.length)
 
@@ -436,12 +432,11 @@ class TraceReader(object):
 
             # clamp the segment end if it extends past our segment
             seg_end = min(seg_base + seg.length, end_idx)
-            #print(f"Searching seg #{seg.id}, {seg_base:,} --> {seg_end:,}")
+            logger.debug(f"Searching seg #{seg.id}, {seg_base:,} --> {seg_end:,}")
 
             # snip the segment to start from the given global idx
             relative_idx = idx - seg_base
             seg_ips = seg.ips[relative_idx:]
-            #print(f"length: {len(seg_ips)}")
 
             while idx < seg_end:
 
@@ -468,7 +463,7 @@ class TraceReader(object):
 
                 seg_ips = seg.ips[idx-seg_base:]
 
-        #print("returning hits", output)
+        logger.debug(f"Returning hits {output}")
         return output
 
     def get_memory_accesses(self, address, resolution=1):
@@ -482,17 +477,16 @@ class TraceReader(object):
         Return a tuple of lists (read, write) containing timestamps that access a given memory address in the given slice.
         """
         assert resolution > 0
-        reads, writes = [], []
+        resolution = max(1, resolution)
+
+        logger.debug(f"MEMORY ACCESSES @ 0x{address:08X} // {start_idx:,} --> {end_idx:,} (rez {resolution:0.2f})")
 
         mapped_address = self.trace.get_mapped_address(address)
         if mapped_address == -1:
-            return (reads, writes)
+            return ([], [])
 
-        #print(f"    RAW ADDRESS: 0x{address:08X}") 
-        #print(f"ALIGNED ADDRESS: 0x{self.trace.get_aligned_address(address):08X}") 
-        #print(f"    ACCESS MASK: {self.trace.get_aligned_address_mask(address, 1):02X}") 
+        reads, writes = [], []
         access_mask = self.trace.get_aligned_address_mask(address, 1)
-        resolution = max(1, resolution)
 
         # clamp the search incase the given params are a bit wonky 
         idx = max(0, start_idx)
@@ -500,13 +494,17 @@ class TraceReader(object):
         assert idx < end_idx
 
         next_resolution = [idx, idx]
-        
+
         # search through the trace 
         while idx < end_idx:
+
+            # fetch a segment to search forward through
             seg = self.trace.get_segment(idx)
-            #print(f"seg #{seg.id}, {seg.base_idx:,} --> {seg.base_idx+seg.length:,} -- IDX PTR {idx:,}")
             seg_base = seg.base_idx
+
+            # clamp the segment end if it extends past our segment
             seg_end = min(seg_base + seg.length, end_idx)
+            logger.debug(f"seg #{seg.id}, {seg.base_idx:,} --> {seg.base_idx+seg.length:,} -- IDX PTR {idx:,}")
 
             mem_sets = \
             [
@@ -583,11 +581,12 @@ class TraceReader(object):
         Return a tuple of (read, write) containing timestamps that access the given memory region in the given time slice.
         """
         assert resolution > 0
-        #print(f"REGION ACCESS BETWEEN @ 0x{address:08X} + {length} //  {start_idx:,} --> {end_idx:,} (rez {resolution:0.2f})")
+        resolution = max(1, resolution)
+
+        logger.debug(f"REGION ACCESS BETWEEN @ 0x{address:08X} + {length} //  {start_idx:,} --> {end_idx:,} (rez {resolution:0.2f})")
+
         reads, writes = [], []
         targets = self._region_to_targets(address, length)
-
-        resolution = max(1, resolution)
 
         # clamp the search incase the given params are a bit wonky 
         idx = max(0, start_idx)
@@ -599,8 +598,11 @@ class TraceReader(object):
 
         while idx < end_idx:
 
+            # fetch a segment to search forward through
             seg = self.trace.get_segment(idx)
             seg_base = seg.base_idx
+
+            # clamp the segment end if it extends past our segment
             seg_end = min(seg_base + seg.length, end_idx)
 
             #print("-"*50)
@@ -1078,28 +1080,49 @@ class TraceReader(object):
         # fail, reached start of trace
         return -1
 
+    def find_next_region_read(self, address, length, idx=None):
+        """
+        Return the next timestamp to read from given memory region.
+        """
+        return self._find_next_region_access(address, length, idx, BreakpointType.READ)
+
+    def find_next_region_write(self, address, length, idx=None):
+        """
+        Return the next timestamp to write to the given memory region.
+        """
+        return self._find_next_region_access(address, length, idx, BreakpointType.WRITE)
+
     def find_next_region_access(self, address, length, idx=None):
+        """
+        Return the next timestamp to access (r/w) the given memory region.
+        """
+        return self._find_next_region_access(address, length, idx, BreakpointType.ACCESS)
+
+    def _find_next_region_access(self, address, length, idx=None, access_type=BreakpointType.ACCESS):
         """
         Return the next timestamp to access the given memory region.
         """
         if idx is None:
             idx = self.idx + 1
 
-        #print(f"FIND NEXT REGION ACCESS FOR 0x{address:08X} -> 0x{address+length:08X} STARTING AT IDX {idx:,}")
+        logger.debug(f"FIND NEXT REGION ACCESS FOR 0x{address:08X} -> 0x{address+length:08X} STARTING AT IDX {idx:,}")
 
         accesses, mem_sets = [], []
         targets = self._region_to_targets(address, length)
         starting_segment = self.trace.get_segment(idx)
 
         for seg_id in range(starting_segment.id, len(self.trace.segments)):
+
+            # fetch a segment to search forward through
             seg = self.trace.segments[seg_id]
             seg_base = seg.base_idx
+
+            mem_sets = []
             
-            mem_sets = \
-            [
-                (seg.read_idxs, seg.read_addrs, seg.read_masks),
-                (seg.write_idxs, seg.write_addrs, seg.write_masks),
-            ]
+            if access_type & BreakpointType.READ:
+                mem_sets.append((seg.read_idxs, seg.read_addrs, seg.read_masks))
+            if access_type & BreakpointType.WRITE:
+                mem_sets.append((seg.write_idxs, seg.write_addrs, seg.write_masks))
 
             # loop through the read / write memory sets for this segment
             for idxs, addrs, masks in mem_sets:
@@ -1183,28 +1206,43 @@ class TraceReader(object):
         # fail, reached end of trace
         return -1
 
-    def find_prev_region_access(self, address, length, idx=None):
+    def find_prev_region_read(self, address, length, idx=None):
         """
-        Return the previous timestamp to access the given region.
+        Return the previous timestamp to read from the given memory region.
+        """
+        return self.find_prev_region_access(address, length, idx, BreakpointType.READ)
+
+    def find_prev_region_write(self, address, length, idx=None):
+        """
+        Return the previous timestamp to write to the given memory region.
+        """
+        return self.find_prev_region_access(address, length, idx, BreakpointType.WRITE)
+
+    def find_prev_region_access(self, address, length, idx=None, access_type=BreakpointType.ACCESS):
+        """
+        Return the previous timestamp to access the given memory region.
         """
         if idx is None:
             idx = self.idx - 1
 
-        #print(f"FIND PREV REGION ACCESS FOR 0x{address:08X} -> 0x{address+length:08X} STARTING AT IDX {idx:,}")
+        logger.debug(f"FIND PREV REGION ACCESS FOR 0x{address:08X} -> 0x{address+length:08X} STARTING AT IDX {idx:,}")
 
         accesses, mem_sets = [], []
         targets = self._region_to_targets(address, length)
         starting_segment = self.trace.get_segment(idx)
 
         for seg_id in range(starting_segment.id, -1, -1):
+
+            # fetch a segment to search backwards through
             seg = self.trace.segments[seg_id]
             seg_base = seg.base_idx
-            
-            mem_sets = \
-            [
-                (seg.read_idxs, seg.read_addrs, seg.read_masks),
-                (seg.write_idxs, seg.write_addrs, seg.write_masks),
-            ]
+
+            mem_sets = []
+
+            if access_type & BreakpointType.READ:
+                mem_sets.append((seg.read_idxs, seg.read_addrs, seg.read_masks))
+            if access_type & BreakpointType.WRITE:
+                mem_sets.append((seg.write_idxs, seg.write_addrs, seg.write_masks))
 
             # loop through the read / write memory sets for this segment
             for idxs, addrs, masks in mem_sets:
@@ -1714,7 +1752,6 @@ class TraceReader(object):
                 if not missing_mask & current_mask:
                     continue
                 
-                # TODO
                 found_mask = missing_mask & current_mask
                 found_mem = seg.get_mem_data(hit_id, set_id, found_mask)
                 #print(f"FOUND MEM {found_mem} FOUND MASK {found_mask:02X}")

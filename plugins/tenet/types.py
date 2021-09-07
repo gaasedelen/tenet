@@ -47,13 +47,12 @@ class HexItem(object):
 # Breakpoint Types
 #-----------------------------------------------------------------------------
 
-# TODO: make enum? why isn't this already one? lol lazy?
-class BreakpointType:
-    NONE = 0
-    EXEC = 1
-    READ = 2
-    WRITE = 3
-    ACCESS = 4
+class BreakpointType(enum.IntEnum):
+    NONE   = 1 << 0
+    READ   = 1 << 1
+    WRITE  = 1 << 2
+    EXEC   = 1 << 3
+    ACCESS = (READ | WRITE)
 
 class BreakpointEvent(enum.Enum):
     ADDED    = 0
