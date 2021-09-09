@@ -78,15 +78,19 @@ class StackController(HexController):
         # fade out the upper part of the stack that is currently 'unallocated'
         self.set_fade_threshold(self.reader.sp)
 
-        #
-        # if the user has a byte / range selected ... we will *not* move
-        # the stack view on idx changes. this is to preserve the location
-        # of their selection on-screen (eg, when hovering a selected byte,
-        # and jumping between its memory accesses)
-        #
-
         if self.view:
-            if not (self.view._selection_start == self.view._selection_end == -1):
+
+            #
+            # if the user has a byte / range selected or the view is purposely
+            # omitting navigation events, we will *not* move the stack view on
+            # idx changes.
+            #
+            # this is to preserve the location of their selection on-screen
+            # (eg, when hovering a selected byte, and jumping between its
+            # memory accesses)
+            #
+
+            if self.view._ignore_navigation or self.view.selection_size:
                 self.refresh_memory()
                 self.view.refresh()
                 return

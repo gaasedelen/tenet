@@ -8,6 +8,7 @@ class RegisterView(QtWidgets.QWidget):
     """
     A container for the the widgets that make up the Registers view.
     """
+
     def __init__(self, controller, model, parent=None):
         super(RegisterView, self).__init__(parent)
         self.controller = controller
@@ -90,7 +91,7 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
         self.pctx = controller.pctx
         self.controller = controller
         self.model = model
-        
+
         font = QtGui.QFont("Courier", pointSize=normalize_font(9))
         font.setStyleHint(QtGui.QFont.TypeWriter)
         self.setFont(font)
@@ -271,69 +272,46 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
         return QtCore.QSize(width, height)
 
     def wheelEvent(self, event):
+        """
+        Qt overload to capture wheel events.
+        """
 
-        target = self.pctx.breakpoints.model.focused_breakpoint
-        if not (target and target.type == BreakpointType.EXEC):
+        # no execution breakpoints set, nothing to do
+        if not self.pctx.breakpoints.model.bp_exec:
             return
 
-        pos = event.pos()
-        field = self._pos_to_field(pos)
-
+        # mouse hover was not over IP register value, nothing to do
+        field = self._pos_to_field(event.pos())
         if not (field and field.name == self.model.arch.IP):
             return
 
-        if target.address != self.model.registers[self.model.arch.IP]:
+        # get the IP value currently displayed in the reg window
+        current_ip = self.model.registers[self.model.arch.IP]
+        breakpoints = self.pctx.breakpoints.model.bp_exec
+
+        # loop through the execution-based breakpoints
+        for breakpoint_address in breakpoints:
+            if breakpoint_address == current_ip:
+                break
+
+        # no execution breakpoints match the hovered IP
+        else:
             return
 
         # scroll up
         if event.angleDelta().y() > 0:
-            self.pctx.reader.seek_to_prev(target.address, target.type)
+            self.pctx.reader.seek_to_prev(current_ip, BreakpointType.EXEC)
 
         # scroll down
         elif event.angleDelta().y() < 0:
-            self.pctx.reader.seek_to_next(target.address, target.type)
+            self.pctx.reader.seek_to_next(current_ip, BreakpointType.EXEC)
 
         return
 
-    def mousePressEvent(self, event):
-
-        # save the position of this click / right click
-        pos = event.pos()
-
-        # handle click events
-        if event.button() == QtCore.Qt.LeftButton:
-
-            # check if the user clicked a known field
-            field = self._pos_to_field(pos)
-
-            # no field (register name, or register value) was selected
-            if not field:
-                self.controller.clear_register_focus()
-
-            # the user clicked on the register value
-            elif field.value_rect.contains(pos):
-                self.controller.focus_register_value(field.name)
-
-            # the user clicked on the 'seek to next reg change' arrow
-            elif field.next_rect.contains(pos):
-                result = self.pctx.reader.find_next_register_change(field.name)
-                if result != -1:
-                    self.pctx.reader.seek(result)
-
-            # the user clicked on the 'seek to prev reg change' arrow
-            elif field.prev_rect.contains(pos):
-                result = self.pctx.reader.find_prev_register_change(field.name)
-                if result != -1:
-                    self.pctx.reader.seek(result)
-            
-            # the user clicked on the register name
-            else:
-                self.controller.focus_register_name(field.name)
-
-        # update the view as selection / drawing may change
-        self.viewport().update()
-
     def mouseMoveEvent(self, e):
+        """
+        Qt overload to capture mouse movement events.
+        """
         #print("HOVERING!", e.pos())
 
         point = e.pos()
@@ -352,7 +330,76 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
         if before != self._hovered_arrow:
             self.viewport().update()
 
+    def mouseDoubleClickEvent(self, event):
+        """
+        Qt overload to capture mouse double-click events.
+        """
+        mouse_position = event.pos()
+
+        # handle duoble (left) click events
+        if event.button() == QtCore.Qt.LeftButton:
+
+            # check if the user clicked a known field
+            field = self._pos_to_field(mouse_position)
+
+            # ignore if the double clicked field (register) was not the IP reg
+            if not (field and field.name == self.model.arch.IP):
+                return
+
+            # ignore if the double click was not on the reg value
+            if not field.value_rect.contains(mouse_position):
+                return
+
+            # the user double clicked IP, so set a breakpoint on it
+            self.controller.set_ip_breakpoint()
+
+            # swallow the event
+            event.accept()
+
+    def mousePressEvent(self, event):
+        """
+        Qt overload to capture mouse button presses.
+        """
+        mouse_position = event.pos()
+
+        # handle click events
+        if event.button() == QtCore.Qt.LeftButton:
+
+            # check if the user clicked a known field
+            field = self._pos_to_field(mouse_position)
+
+            # no field (register name, or register value) was selected
+            if not field:
+                self.controller.clear_register_focus()
+
+            # the user clicked on the register value
+            elif field.value_rect.contains(mouse_position):
+                self.controller.focus_register_value(field.name)
+
+            # the user clicked on the 'seek to next reg change' arrow
+            elif field.next_rect.contains(mouse_position):
+                result = self.pctx.reader.find_next_register_change(field.name)
+                if result != -1:
+                    self.pctx.reader.seek(result)
+
+            # the user clicked on the 'seek to prev reg change' arrow
+            elif field.prev_rect.contains(mouse_position):
+                result = self.pctx.reader.find_prev_register_change(field.name)
+                if result != -1:
+                    self.pctx.reader.seek(result)
+
+            # the user clicked on the register name
+            else:
+                self.controller.focus_register_name(field.name)
+
+        # update the view as selection / drawing may change
+        self.viewport().update()
+
     def paintEvent(self, event):
+        """
+        Qt overload of widget painting.
+        """
+
         if not self.model.registers:
             return
 
@@ -361,7 +408,7 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
         area_size = self.viewport().size()
         area_rect = self.viewport().rect()
         widget_size = self.full_size()
-        
+
         painter.fillRect(area_rect, self.pctx.palette.reg_bg)
 
         brush_defualt = painter.brush()
@@ -376,7 +423,7 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
                 painter.setBackground(brush_selected)
                 painter.setBackgroundMode(QtCore.Qt.OpaqueMode)
                 painter.setPen(self.pctx.palette.standard_selection_fg)
-            
+
             # default / unselected register colors
             else:
                 painter.setBackground(brush_defualt)
@@ -404,25 +451,23 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
             # no special highlighting, default register value color text
             else:
                 painter.setPen(self.pctx.palette.reg_value_fg)
-            
+
             # coloring for when the register is selected by the user
             if reg_name == self.model.focused_reg_value:
+                painter.setPen(self.pctx.palette.standard_selection_fg)
+                painter.setBackground(brush_selected)
+                painter.setBackgroundMode(QtCore.Qt.OpaqueMode)
 
-                # special highlighting when the instruction pointer is selected
-                if reg_name == self.model.arch.IP:
-                    painter.setPen(self.pctx.palette.navigation_selection_fg)
-                    painter.setBackground(self.pctx.palette.navigation_selection_bg)
-
-                # normal highlighting
-                else:
-                    painter.setPen(self.pctx.palette.standard_selection_fg)
-                    painter.setBackground(brush_selected)
-                    painter.setBackgroundMode(QtCore.Qt.OpaqueMode)
-            
             # default / unselected register colors
             else:
                 painter.setBackground(brush_defualt)
                 painter.setBackgroundMode(QtCore.Qt.OpaqueMode)
+
+            # special highlighting of the instruction pointer if it matches an active breakpoint
+            if reg_name == self.model.arch.IP:
+                if reg_value in self.model.execution_breakpoints:
+                    painter.setPen(self.pctx.palette.navigation_selection_fg)
+                    painter.setBackground(self.pctx.palette.navigation_selection_bg)
 
             # draw register value
             painter.drawText(reg_field.value_rect, QtCore.Qt.AlignCenter, rendered_value)
@@ -437,7 +482,7 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
 
     def _draw_arrow(self, painter, rect, index):
         path = QtGui.QPainterPath()
-        
+
         size = rect.height()
         assert size % 2, "Cursor triangle size must be odd"
 
@@ -445,7 +490,7 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
         top_x = rect.x() + (0 if index else rect.width())
         top_y = rect.y() + 1
         #print("TOP", top_x, top_y)
-        
+
         # bottom point of the triangle
         bottom_x = top_x
         bottom_y = top_y + size - 1
@@ -458,7 +503,7 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
 
         # start drawing from the 'top' of the triangle
         path.moveTo(top_x, top_y)
-        
+
         # generate the triangle path / shape
         path.lineTo(bottom_x, bottom_y)
         path.lineTo(tip_x, tip_y)
@@ -480,9 +525,9 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
                 painter.setBrush(self.pctx.palette.arrow_prev)
         else:
                 painter.setBrush(self.pctx.palette.arrow_idle)
-            
+
         painter.drawPath(path)
-            
+
 class RegisterField(object):
     def __init__(self, name, name_rect, value_rect, arrow_rects):
         self.name = name

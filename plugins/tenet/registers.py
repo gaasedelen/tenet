@@ -1,5 +1,4 @@
 from tenet.ui import *
-from tenet.types import BreakpointType
 from tenet.util.misc import register_callback, notify_callback
 from tenet.integration.api import DockableWindow
 
@@ -8,10 +7,10 @@ from tenet.integration.api import DockableWindow
 #------------------------------------------------------------------------------
 #
 #    The purpose of this file is to house the 'headless' components of the
-#    registers window and its underlying functionality. This is split into a 
-#    model and controller component, of a typical 'MVC' design pattern. 
+#    registers window and its underlying functionality. This is split into a
+#    model and controller component, of a typical 'MVC' design pattern.
 #
-#    NOTE: for the time being, this file also contains the logic for the 
+#    NOTE: for the time being, this file also contains the logic for the
 #    'IDX Shell' as it is kind of attached to the register view and not big
 #    enough to demand its own seperate structuring ... yet
 #
@@ -23,15 +22,16 @@ class RegisterController(object):
 
     def __init__(self, pctx):
         self.pctx = pctx
+        self.model = RegistersModel(pctx)
         self.reader = None
-        self.model = RegistersModel(self.pctx.arch)
 
         # UI components
         self.view = None
         self.dockable = None
 
-        # events 
-        pctx.breakpoints.model.focused_breakpoint_changed(self._focused_breakpoint_changed)
+        # signals
+        self._ignore_signals = False
+        pctx.breakpoints.model.breakpoints_changed(self._breakpoints_changed)
 
     def show(self, target=None, position=0):
         """
@@ -56,7 +56,7 @@ class RegisterController(object):
         new_dockable = DockableWindow("CPU Registers", self.view)
 
         #
-        # if there is a reference to a left over dockable window (e.g, from a 
+        # if there is a reference to a left over dockable window (e.g, from a
         # previous close of this window type) steal its dock positon so we can
         # hopefully take the same place as the old one
         #
@@ -83,7 +83,7 @@ class RegisterController(object):
         self.dockable.hide()
         self.view = None
         self.dockable = None
-    
+
     def attach_reader(self, reader):
         """
         Attach a trace reader to this controller.
@@ -108,20 +108,27 @@ class RegisterController(object):
         self.reader = None
         self.model.reset()
 
+    def set_ip_breakpoint(self):
+        """
+        Set an execution breakpoint on the current instruction pointer.
+        """
+        current_ip = self.model.registers[self.model.arch.IP]
+
+        self._ignore_signals = True
+        self.pctx.breakpoints.clear_execution_breakpoints()
+        self.pctx.breakpoints.add_execution_breakpoint(current_ip)
+        self._ignore_signals = False
+
+        if self.view:
+            self.view.refresh()
+
+    # TODO: maybe we can remove all these 'focus' funcs now?
     def focus_register_value(self, reg_name):
         """
         Focus a register value in the register view.
         """
-
-        # if the instruction pointer is selected, show its executions in the trace
-        if reg_name == self.model.arch.IP:
-            reg_value = self.model.registers[reg_name]
-            self.pctx.breakpoints.focus_breakpoint(reg_value, BreakpointType.EXEC)
-        else:
-            self.clear_register_focus()
-
         self.model.focused_reg_value = reg_name
-    
+
     def focus_register_name(self, reg_name):
         """
         Focus a register name in the register view.
@@ -147,10 +154,6 @@ class RegisterController(object):
         """
         Clear focus from the active register field.
         """
-        if self.model.focused_reg_value == self.model.arch.IP:
-            assert self.pctx.breakpoints.model.focused_breakpoint
-            assert self.pctx.breakpoints.model.focused_breakpoint.address == self.model.registers[self.model.arch.IP]
-            self.pctx.breakpoints.focus_breakpoint(None)
         self.model.focused_reg_value = None
 
     def set_registers(self, registers, delta=None):
@@ -215,39 +218,15 @@ class RegisterController(object):
         """
         The trace position has been changed.
         """
-        IP = self.model.arch.IP
-        target = self.pctx.breakpoints.model.focused_breakpoint
-        registers = self.pctx.reader.registers
-
-        if target and target.address == registers[IP]:
-            self.model.focused_reg_value = IP
-        else:
-            self.model.focused_reg_value = None
-
         self.model.idx = idx
         self.set_registers(self.reader.registers, self.reader.trace.get_reg_delta(idx).keys())
 
-    def _focused_breakpoint_changed(self, breakpoint):
+    def _breakpoints_changed(self):
         """
-        The focused breakpoint has changed.
+        Handle breakpoints changed event.
         """
         if not self.view:
             return
-
-        if not (breakpoint and breakpoint.type == BreakpointType.EXEC):
-            self.model.focused_reg_value = None
-            self.view.refresh()
-            return
-
-        IP = self.model.arch.IP
-        registers = self.pctx.reader.registers
-
-        if registers[IP] != breakpoint.address:
-            self.model.focused_reg_value = None
-            self.view.refresh()
-            return
-
-        self.model.focused_reg_value = IP
         self.view.refresh()
 
 class RegistersModel(object):
@@ -255,8 +234,8 @@ class RegistersModel(object):
     The Registers Model (Data)
     """
 
-    def __init__(self, arch):
-        self.arch = arch
+    def __init__(self, pctx):
+        self._pctx = pctx
         self.reset()
 
         #----------------------------------------------------------------------
@@ -264,6 +243,28 @@ class RegistersModel(object):
         #----------------------------------------------------------------------
 
         self._registers_changed_callbacks = []
+
+    #----------------------------------------------------------------------
+    # Properties
+    #----------------------------------------------------------------------
+
+    @property
+    def arch(self):
+        """
+        Return the architecture definition.
+        """
+        return self._pctx.arch
+
+    @property
+    def execution_breakpoints(self):
+        """
+        Return the set of active execution breakpoints.
+        """
+        return self._pctx.breakpoints.model.bp_exec
+
+    #----------------------------------------------------------------------
+    # Public
+    #----------------------------------------------------------------------
 
     def reset(self):
 

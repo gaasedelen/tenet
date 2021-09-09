@@ -8,7 +8,7 @@
 
         "lightest_gray":  [221, 221, 221],
         "light_gray":     [160, 160, 160],
-        "gray":           [ 80,  80,  80],
+        "gray":           [ 90,  90,  90],
         "medium_gray":    [ 60,  60,  60],
         "dark_gray":      [ 40,  40,  40],
         "darkest_gray":   [ 25,  25,  25],

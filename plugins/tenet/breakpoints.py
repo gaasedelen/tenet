@@ -1,3 +1,5 @@
+import itertools
+
 from tenet.ui import *
 from tenet.types import BreakpointType, BreakpointEvent, TraceBreakpoint
 from tenet.util.misc import register_callback, notify_callback
@@ -10,11 +12,16 @@ from tenet.integration.api import disassembler
 #
 #    The purpose of this file is to house the 'headless' components of the
 #    breakpoints window and its underlying functionality. This is split into
-#    a model and controller component, of a typical 'MVC' design pattern. 
+#    a model and controller component, of a typical 'MVC' design pattern.
 #
 #    v0.1 NOTE/TODO: err, a dedicated bp window was planned but did not quite
 #    make the cut for the initial release of this plugin. For that reason,
 #    some of this logic may be half-baked pending further work.
+#
+#    v0.2 NOTE/TODO: Currently, the breakpoint controller/Tenet artificially
+#    limits usage to one execution breakpoint and one memory breakpoint at
+#    a time. I'll probably raise this 'limit' when a proper gui is made
+#    for managing and differentiating between breakpoints...
 #
 
 class BreakpointController(object):
@@ -35,26 +42,27 @@ class BreakpointController(object):
             self.dockable = None
 
         # events
-        self._ignore_events = False
+        self._ignore_signals = False
         self.pctx.core.ui_breakpoint_changed(self._ui_breakpoint_changed)
 
     def reset(self):
         """
         Reset the breakpoint controller.
         """
-        self.focus_breakpoint(None)
         self.model.reset()
 
-    def add_breakpoint(self, address, access_type):
+    def add_breakpoint(self, address, access_type, length=1):
         """
         Add a breakpoint of the given access type.
         """
         if access_type == BreakpointType.EXEC:
-            self.add_execution_breakpoint(address)
+            self.add_execution_breakpoint(address, length)
         elif access_type == BreakpointType.READ:
-            self.add_read_breakpoint(address)
+            self.add_read_breakpoint(address, length)
         elif access_type == BreakpointType.WRITE:
-            self.add_write_breakpoint(address)
+            self.add_write_breakpoint(address, length)
+        elif access_type == BreakpointType.ACCESS:
+            self.add_access_breakpoint(address, length)
         else:
             raise ValueError("UNKNOWN ACCESS TYPE", access_type)
 
@@ -63,58 +71,70 @@ class BreakpointController(object):
         Add an execution breakpoint for the given address.
         """
         self.model.bp_exec[address] = TraceBreakpoint(address, BreakpointType.EXEC)
-    
-    def add_read_breakpoint(self, address):
+        self.model._notify_breakpoints_changed()
+
+    def add_read_breakpoint(self, address, length=1):
         """
         Add a memory read breakpoint for the given address.
         """
-        self.model.bp_read[address] = TraceBreakpoint(address, BreakpointType.READ)
+        self.model.bp_read[address] = TraceBreakpoint(address, BreakpointType.READ, length)
+        self.model._notify_breakpoints_changed()
 
-    def add_write_breakpoint(self, address):
+    def add_write_breakpoint(self, address, length=1):
         """
         Add a memory write breakpoint for the given address.
         """
-        self.model.bp_write[address] = TraceBreakpoint(address, BreakpointType.WRITE)
+        self.model.bp_write[address] = TraceBreakpoint(address, BreakpointType.WRITE, length)
+        self.model._notify_breakpoints_changed()
 
-    def focus_breakpoint(self, address, access_type=BreakpointType.NONE, length=1):
+    def add_access_breakpoint(self, address, length=1):
         """
-        Set and focus on a given breakpoint.
+        Add a memory access breakpoint for the given address.
         """
-        dctx = disassembler[self.pctx]
+        self.model.bp_access[address] = TraceBreakpoint(address, BreakpointType.ACCESS, length)
+        self.model._notify_breakpoints_changed()
 
-        if self.model.focused_breakpoint and address != self.model.focused_breakpoint.address:
-            self._ignore_events = True
-            dctx.delete_breakpoint(self.model.focused_breakpoint.address)
-            self._ignore_events = False
+    def clear_execution_breakpoints(self):
+        """
+        Clear all execution breakpoints.
+        """
+        self.model.bp_exec = {}
+        self.model._notify_breakpoints_changed()
 
-        if address is None:
-            self.model.focused_breakpoint = None
-            return None
+    def clear_memory_breakpoints(self):
+        """
+        Clear all memory breakpoints.
+        """
+        self.model.bp_read = {}
+        self.model.bp_write = {}
+        self.model.bp_access = {}
+        self.model._notify_breakpoints_changed()
 
-        new_breakpoint = TraceBreakpoint(address, access_type, length)
-        self.model.focused_breakpoint = new_breakpoint
-
-        if access_type == BreakpointType.EXEC:
-            self._ignore_events = True
-            dctx.set_breakpoint(self.model.focused_breakpoint.address)
-            self._ignore_events = False
-
-        return new_breakpoint
-         
     def _ui_breakpoint_changed(self, address, event_type):
         """
         Handle a breakpoint change event from the UI.
         """
-        if self._ignore_events:
+        if self._ignore_signals:
             return
 
-        #print(f"UI Breakpoint Event {event_type} @ {address:08X}")
+        self._delete_disassembler_breakpoints()
+        self.model.bp_exec = {}
 
-        if event_type == BreakpointEvent.ADDED:
-            self.focus_breakpoint(address, BreakpointType.EXEC)
+        if event_type in [BreakpointEvent.ADDED, BreakpointEvent.ENABLED]:
+            self.add_execution_breakpoint(address)
 
-        elif event_type in [BreakpointEvent.DISABLED, BreakpointEvent.REMOVED]:
-            self.focus_breakpoint(None)
+        self.model._notify_breakpoints_changed()
+
+    def _delete_disassembler_breakpoints(self):
+        """
+        Remove all execution breakpoints from the disassembler UI.
+        """
+        dctx = disassembler[self.pctx]
+
+        self._ignore_signals = True
+        for address in self.model.bp_exec:
+            dctx.delete_breakpoint(address)
+        self._ignore_signals = False
 
 class BreakpointModel(object):
     """
@@ -128,37 +148,38 @@ class BreakpointModel(object):
         # Callbacks
         #----------------------------------------------------------------------
 
-        self._focus_changed_callbacks = []
+        self._breakpoints_changed_callbacks = []
 
     def reset(self):
         self.bp_exec = {}
         self.bp_read = {}
         self.bp_write = {}
-        self._focused_breakpoint = None
+        self.bp_access = {}
 
     @property
-    def focused_breakpoint(self):
-        return self._focused_breakpoint
-
-    @focused_breakpoint.setter
-    def focused_breakpoint(self, value):
-        if value == self.focused_breakpoint:
-            return
-        self._focused_breakpoint = value
-        self._notify_focused_breakpoint_changed(value)
+    def memory_breakpoints(self):
+        """
+        Return an iterable list of all memory breakpoints.
+        """
+        bps = itertools.chain(
+            self.bp_read.values(),
+            self.bp_write.values(),
+            self.bp_access.values()
+        )
+        return bps
 
     #----------------------------------------------------------------------
     # Callbacks
     #----------------------------------------------------------------------
 
-    def focused_breakpoint_changed(self, callback):
+    def breakpoints_changed(self, callback):
         """
         Subscribe a callback for a breakpoint changed event.
         """
-        register_callback(self._focus_changed_callbacks, callback)
+        register_callback(self._breakpoints_changed_callbacks, callback)
 
-    def _notify_focused_breakpoint_changed(self, breakpoint):
+    def _notify_breakpoints_changed(self):
         """
         Notify listeners of a breakpoint changed event.
         """
-        notify_callback(self._focus_changed_callbacks, breakpoint)
+        notify_callback(self._breakpoints_changed_callbacks)

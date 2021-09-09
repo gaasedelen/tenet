@@ -22,17 +22,17 @@ class HexController(object):
 
     def __init__(self, pctx):
         self.pctx = pctx
+        self.model = HexModel(pctx)
         self.reader = None
-        self.model = HexModel()
 
         # UI components
         self.view = None
         self.dockable = None
         self._title = "<unassigned>"
 
-        # events 
-        self._ignore_breakpoint = False
-        pctx.breakpoints.model.focused_breakpoint_changed(self._focused_breakpoint_changed)
+        # signals
+        self._ignore_signals = False
+        pctx.breakpoints.model.breakpoints_changed(self._breakpoints_changed)
 
     def show(self, target=None, position=0):
         """
@@ -54,9 +54,9 @@ class HexController(object):
 
         self.view = HexView(self, self.model)
         new_dockable = DockableWindow(self._title, self.view)
-        
+
         #
-        # if there is a reference to a left over dockable window (e.g, from a 
+        # if there is a reference to a left over dockable window (e.g, from a
         # previous close of this window type) steal its dock positon so we can
         # hopefully take the same place as the old one
         #
@@ -78,12 +78,12 @@ class HexController(object):
         # if there is no view/dockable, then there's nothing to try and hide
         if not(self.view and self.dockable):
             return
-            
+
         # hide the dockable, and drop references to the widgets
         self.dockable.hide()
         self.view = None
         self.dockable = None
-    
+
     def attach_reader(self, reader):
         """
         Attach a trace reader to this controller.
@@ -99,7 +99,7 @@ class HexController(object):
         # it's the first time we're seeing this. this ensures that our widget
         # will accurately reflect the current state of the reader
         #
-        
+
         self._idx_changed(reader.idx)
 
     def detach_reader(self):
@@ -157,21 +157,14 @@ class HexController(object):
 
         return byte_string
 
-    def focus_address_access(self, address):
+    def pin_memory(self, address, access_type=BreakpointType.ACCESS, length=1):
         """
-        Focus on the given memory address.
+        Pin a region of memory.
         """
-        self._ignore_breakpoint = True
-        self.pctx.breakpoints.focus_breakpoint(address, BreakpointType.ACCESS)
-        self._ignore_breakpoint = False
-
-    def focus_region_access(self, address, length):
-        """
-        Focus on a region of memory.
-        """
-        self._ignore_breakpoint = True
-        self.pctx.breakpoints.focus_breakpoint(address, BreakpointType.ACCESS, length)
-        self._ignore_breakpoint = False
+        self._ignore_signals = True
+        self.pctx.breakpoints.clear_memory_breakpoints()
+        self.pctx.breakpoints.add_breakpoint(address, access_type, length)
+        self._ignore_signals = False
 
     def refresh_memory(self):
         """
@@ -209,31 +202,25 @@ class HexController(object):
         """
         self.refresh_memory()
 
-    def _focused_breakpoint_changed(self, breakpoint):
+    def _breakpoints_changed(self):
         """
-        The focused breakpoint has changed.
+        Handle breakpoints changed event.
         """
         if not self.view:
             return
 
-        mem_bps = [BreakpointType.READ, BreakpointType.WRITE, BreakpointType.ACCESS]
-
-        if not (breakpoint and breakpoint.type in mem_bps):
-            self.view.reset_selection()
-            self.view.refresh()
+        if self._ignore_signals:
             return
 
-        if not self._ignore_breakpoint:
-            self.view.reset_selection()
-            self.view.refresh()
-            return
+        self.view.refresh()
 
 class HexModel(object):
     """
     A generalized model for Hex View based window.
     """
 
-    def __init__(self):
+    def __init__(self, pctx):
+        self._pctx = pctx
 
         # how the hex (data) and auxillary text should be displayed
         self._hex_format = HexType.BYTE
@@ -259,12 +246,19 @@ class HexModel(object):
         self.address = 0
         self.fade_address = 0
 
-        self._selection_start_byte = 0
-        self._selection_end_byte = 0
-    
+        # pinned memory / breakpoint selections
+        self._pinned_selections = []
+
     #----------------------------------------------------------------------
     # Properties
     #----------------------------------------------------------------------
+
+    @property
+    def memory_breakpoints(self):
+        """
+        Return the set of active memory breakpoints.
+        """
+        return self._pctx.breakpoints.model.memory_breakpoints
 
     @property
     def num_bytes_per_line(self):
@@ -282,7 +276,7 @@ class HexModel(object):
         if width < 1:
             raise ValueError("Invalid bytes per line value (must be > 0)")
 
-        if width % HEX_TYPE_WIDTH[self._hex_format]: 
+        if width % HEX_TYPE_WIDTH[self._hex_format]:
             raise ValueError("Bytes per line must be a multiple of display format type")
 
         self._num_bytes_per_line = width

@@ -85,11 +85,10 @@ class TenetContext(object):
         """
 
         def test_load():
-            #filepath = R"C:\Users\user\Desktop\projects\tenet_dev\testcases\xbox\2bl.log"
-            filepath = R"C:\Users\user\Desktop\projects\tenet_dev\testcases\xbox\mcpx.log"
-            #filepath = R"C:\Users\user\Desktop\projects\tenet_dev\tenet\tracers\pin\boombox.log"
+            import ida_loader
+            trace_filepath = ida_loader.get_plugin_options("Tenet")
             focus_window()
-            self.load_trace(filepath)
+            self.load_trace(trace_filepath)
             self.show_ui()
 
         def dev_launch():

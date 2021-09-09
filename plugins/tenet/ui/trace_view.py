@@ -4,7 +4,7 @@ import traceback
 #
 # TODO: BIG DISCLAIMER -- The trace visualization / window does *not* make
 # use of the MVC pattern that the other widgets do.
-# 
+#
 # this is mainly due to the fact that it was prototyped last, and I haven't
 # gotten around to moving the 'logic' out of window/widget classes and into
 # a dedicated controller class.
@@ -69,6 +69,9 @@ class TraceBar(QtWidgets.QWidget):
         self._magnetism_distance = 4
         self._hovered_idx = INVALID_IDX
 
+        # listen for breakpoint changed events
+        pctx.breakpoints.model.breakpoints_changed(self._breakpoints_changed)
+
         #----------------------------------------------------------------------
         # Styling
         #----------------------------------------------------------------------
@@ -113,7 +116,7 @@ class TraceBar(QtWidgets.QWidget):
         self._image_border = None
         self._image_cursor = None
         self._image_final = None
-        
+
         self._painter_base = None
         self._painter_highlights = None
         self._painter_selection = None
@@ -185,7 +188,7 @@ class TraceBar(QtWidgets.QWidget):
     #-------------------------------------------------------------------------
     # Public
     #-------------------------------------------------------------------------
-    
+
     def attach_reader(self, reader):
         """
         Attach a trace reader to this controller.
@@ -218,7 +221,7 @@ class TraceBar(QtWidgets.QWidget):
         self._last_trace_idx = min(self.reader.trace.length, self.end_idx)
 
         # refresh/redraw relevant elements
-        self._refresh_trace_highlights(self.pctx.breakpoints.model.focused_breakpoint)
+        self._refresh_trace_highlights()
         self.refresh()
 
         # return the final / selected bounds
@@ -238,7 +241,7 @@ class TraceBar(QtWidgets.QWidget):
         Reset the trace visualization.
         """
         self.reader = None
-        
+
         self.start_idx = 0
         self.end_idx = 0
         self._last_trace_idx = 0
@@ -262,11 +265,11 @@ class TraceBar(QtWidgets.QWidget):
         Refresh the trace visualization.
         """
         self.update()
-    
+
     #----------------------------------------------------------------------
     # Qt Overloads
     #----------------------------------------------------------------------
-        
+
     def mouseMoveEvent(self, event):
         """
         Qt overload to capture mouse movement events.
@@ -309,7 +312,7 @@ class TraceBar(QtWidgets.QWidget):
 
         # if the left mouse button was released...
         if event.button() == QtCore.Qt.MouseButton.LeftButton:
-            
+
             #
             # no selection origin? this means the click probably started
             # off this widget, and the user moved their mouse over viz
@@ -355,7 +358,7 @@ class TraceBar(QtWidgets.QWidget):
 
         self.refresh()
         event.accept()
-        
+
     def resizeEvent(self, _):
         """
         Qt overload to capture resize events for the widget.
@@ -376,7 +379,7 @@ class TraceBar(QtWidgets.QWidget):
 
         We delay handling resize events because several resize events can
         trigger when a user is dragging to resize a window. we only really
-        care to recompute the visualization when they stop 'resizing' it. 
+        care to recompute the visualization when they stop 'resizing' it.
         """
         self.set_bounds(self.start_idx, self.end_idx)
 
@@ -387,7 +390,7 @@ class TraceBar(QtWidgets.QWidget):
         self._cell_height = 0
         self._cell_border = 0
         self._cell_spacing = 0
-        
+
         # how many 'instruction' cells *must* be shown based on current selection?
         num_cell = self.end_idx - self.start_idx
         if not num_cell:
@@ -396,7 +399,7 @@ class TraceBar(QtWidgets.QWidget):
         # how many 'y' pixels are available, per cell (including spacing, between cells)
         _, viz_h = self.viz_size
         given_space_per_cell = viz_h / num_cell
-        
+
         # compute the smallest possible cell height, with overlapping cell borders
         min_full_cell_height = self._cell_min_height + self._cell_min_border
 
@@ -404,7 +407,7 @@ class TraceBar(QtWidgets.QWidget):
         if given_space_per_cell < min_full_cell_height:
             logger.debug(f"No need for cells -- {given_space_per_cell}, min req {min_full_cell_height}")
             return
-        
+
         # compute the pixel height of a cell at maximum height (including borders)
         max_cell_height_with_borders = self._cell_max_height + self._cell_max_border * 2
 
@@ -450,17 +453,17 @@ class TraceBar(QtWidgets.QWidget):
             logger.warn(f"idx2pos failed (INVALID_DENSITY)")
             return INVALID_POS
 
-        # convert the absolute idx to one that is 'relative' to the viz 
+        # convert the absolute idx to one that is 'relative' to the viz
         relative_idx = idx - self.start_idx
 
         # re-base y to the start of the viz region
         _, y = self.viz_pos
 
-        # 
+        #
         # compute and return an 'approximate' y position of the given idx
         # when the visualization is not using cell metrics (too dense)
         #
-        
+
         if not self.cells_visible:
             y += int(relative_idx / density)
 
@@ -500,7 +503,7 @@ class TraceBar(QtWidgets.QWidget):
             return self.start_idx
         elif y >= viz_y + viz_h:
             return self.end_idx - 1
-        
+
         density = self.density
         if density == INVALID_DENSITY:
             logger.warn(f"pos2idx failed (INVALID_DENSITY)")
@@ -573,7 +576,7 @@ class TraceBar(QtWidgets.QWidget):
         px_distance = self._compute_pixel_distance(current_y, closest_idx)
         logger.debug(f"hovered idx {hovered_idx:,}, closest idx {closest_idx:,}, dist {px_distance}")
 
-        # 
+        #
         lockon_distance = max(self._magnetism_distance, self._cell_height)
 
         # if the event is within the magnetized distance, lock on to it
@@ -658,13 +661,13 @@ class TraceBar(QtWidgets.QWidget):
         self._idx_pending_selection_end = INVALID_IDX
 
         #
-        # if we just selected a new region on a trace viz that's a 
+        # if we just selected a new region on a trace viz that's a
         # 'zoomer', then we will apply the zoom-in action to ourself by
         # adjusting our visible regions (bounds)
         #
         # NOTE: that we don't have to do this on a global / static trace
         # viz, because the 'zoomers' will be notified as a listener of
-        # the selection change events 
+        # the selection change events
         #
 
         if self._is_zoom:
@@ -708,14 +711,14 @@ class TraceBar(QtWidgets.QWidget):
                     smallest_distace = distance
         return closest_idx
 
-    def _focused_breakpoint_changed(self, breakpoint):
+    def _breakpoints_changed(self):
         """
         The focused breakpoint has changed.
         """
-        self._refresh_trace_highlights(breakpoint)
+        self._refresh_trace_highlights()
         self.refresh()
 
-    def _refresh_trace_highlights(self, breakpoint):
+    def _refresh_trace_highlights(self):
         """
         Refresh trace event / highlight info from the underlying trace reader.
         """
@@ -723,22 +726,41 @@ class TraceBar(QtWidgets.QWidget):
         self._idx_writes = []
         self._idx_executions = []
 
-        if not (self.reader and breakpoint):
+        reader, density = self.reader, self.density
+        if not (reader and density != INVALID_DENSITY):
             return
 
-        density = self.density
-        if density == INVALID_DENSITY:
-            return
+        model = self.pctx.breakpoints.model
 
-        if breakpoint.type == BreakpointType.EXEC:
-            self._idx_executions = self.pctx.reader.get_executions_between(breakpoint.address, self.start_idx, self.end_idx, density)
-        elif breakpoint.type == BreakpointType.ACCESS:
-            if breakpoint.length == 1:
-                self._idx_reads, self._idx_writes = self.pctx.reader.get_memory_accesses_between(breakpoint.address, self.start_idx, self.end_idx, density)
+        # fetch executions for all breakpoints
+        for bp in model.bp_exec.values():
+            executions = reader.get_executions_between(bp.address, self.start_idx, self.end_idx, density)
+            self._idx_executions.extend(executions)
+
+        # fetch all memory read (only) breakpoints hits
+        for bp in model.bp_read.values():
+            if bp.length == 1:
+                reads = reader.get_memory_reads_between(bp.address, self.start_idx, self.end_idx, density)
             else:
-                self._idx_reads, self._idx_writes = self.pctx.reader.get_memory_region_accesses_between(breakpoint.address, breakpoint.length, self.start_idx, self.end_idx, density)
-        else:
-            raise NotImplementedError
+                reads = reader.get_memory_region_reads_between(bp.address, bp.length, self.start_idx, self.end_idx, density)
+            self._idx_reads.extend(reads)
+
+        # fetch all memory write (only) breakpoint hits
+        for bp in model.bp_write.values():
+            if bp.length == 1:
+                writes = reader.get_memory_writes_between(bp.address, self.start_idx, self.end_idx, density)
+            else:
+                writes = reader.get_memory_region_writes_between(bp.address, bp.length, self.start_idx, self.end_idx, density)
+            self._idx_writes.extend(writes)
+
+        # fetch memory access for all breakpoints
+        for bp in model.bp_access.values():
+            if bp.length == 1:
+                reads, writes = reader.get_memory_accesses_between(bp.address, self.start_idx, self.end_idx, density)
+            else:
+                reads, writes = reader.get_memory_region_accesses_between(bp.address, bp.length, self.start_idx, self.end_idx, density)
+            self._idx_reads.extend(reads)
+            self._idx_writes.extend(writes)
 
     #-------------------------------------------------------------------------
     # Drawing
@@ -767,14 +789,14 @@ class TraceBar(QtWidgets.QWidget):
 
         self._draw_highlights()
         painter.drawImage(0, 0, self._image_highlights)
-                
+
         #
         # draw user region selection over trace timeline
         #
-        
+
         self._draw_selection()
         painter.drawImage(0, 0, self._image_selection)
-        
+
         #
         # draw border around trace timeline
         #
@@ -782,7 +804,7 @@ class TraceBar(QtWidgets.QWidget):
         self._draw_border()
         painter.drawImage(0, 0, self._image_border)
 
-        # 
+        #
         # draw current trace position cursor
         #
 
@@ -795,8 +817,8 @@ class TraceBar(QtWidgets.QWidget):
         """
         Draw the trace visualization of executed code.
         """
-            
-        # 
+
+        #
         # NOTE: DO NOT REMOVE !!! Qt will CRASH if we do not explicitly delete
         # these here (dangling internal pointer to device/image otherwise?!?)
         #
@@ -821,7 +843,7 @@ class TraceBar(QtWidgets.QWidget):
         dctx = disassembler[self.pctx]
         viz_w, viz_h = self.viz_size
         viz_x, viz_y = self.viz_pos
-        
+
         for i in range(viz_h):
 
             # convert a y pixel in the viz region to an executed address
@@ -862,7 +884,7 @@ class TraceBar(QtWidgets.QWidget):
         #
         # if there is no spacing between cells, that means they are going to
         # be relatively small and have shared 'cell walls' (borders)
-        # 
+        #
         # we attempt to maximize contrast between border and cell color, while
         # attempting to keep the tracebar color visually consistent
         #
@@ -892,9 +914,23 @@ class TraceBar(QtWidgets.QWidget):
         x = viz_x + self._cell_border * -1
         w = viz_w + self._cell_border
         h = self._cell_height
-        
-        # draw each cell + border 
+
+        dctx = disassembler[self.pctx]
+
+        # draw each cell + border
         for idx in range(self.start_idx, self._last_trace_idx):
+
+            # get the executed/code address for the current idx that will represent this cell
+            address = self.reader.get_ip(idx)
+
+            # select the color for instructions that can be viewed with Tenet
+            if dctx.is_mapped(address):
+                painter.setBrush(cell_color)
+
+            # unexplorable parts of the trace are 'greyed' out (eg, not in IDB)
+            else:
+                painter.setBrush(self.pctx.palette.trace_unmapped)
+
             y = self._idx2pos(idx)
             painter.drawRect(x, y, w, h)
 
@@ -903,7 +939,7 @@ class TraceBar(QtWidgets.QWidget):
         Draw active event highlights (mem access, breakpoints) for the trace visualization.
         """
 
-        # 
+        #
         # NOTE: DO NOT REMOVE !!! Qt will CRASH if we do not explicitly delete
         # these here (dangling internal pointer to device/image otherwise?!?)
         #
@@ -925,7 +961,7 @@ class TraceBar(QtWidgets.QWidget):
         """
         viz_w, _ = self.viz_size
         viz_x, _ = self.viz_pos
-        
+
         access_sets = \
         [
             (self._idx_reads, self.pctx.palette.mem_read_bg),
@@ -934,9 +970,9 @@ class TraceBar(QtWidgets.QWidget):
         ]
 
         painter.setPen(QtCore.Qt.NoPen)
-                
+
         h = self._cell_height - self._cell_border
-        
+
         for entries, cell_color in access_sets:
             painter.setBrush(cell_color)
 
@@ -945,7 +981,7 @@ class TraceBar(QtWidgets.QWidget):
                 # skip entries that fall outside the visible zoom
                 if not(self.start_idx <= idx < self.end_idx):
                     continue
-                
+
                 # slight tweak of y because we are only drawing a highlighted
                 # cell body without borders
                 y = self._idx2pos(idx) + self._cell_border
@@ -971,11 +1007,11 @@ class TraceBar(QtWidgets.QWidget):
             painter.setPen(color)
 
             for idx in entries:
-                
+
                 # skip entries that fall outside the visible zoom
                 if not(self.start_idx <= idx < self.end_idx):
                     continue
-                
+
                 y = self._idx2pos(idx)
                 painter.drawLine(viz_x, y, viz_w, y)
 
@@ -984,7 +1020,7 @@ class TraceBar(QtWidgets.QWidget):
         Draw the user cursor / current position in the trace.
         """
         path = QtGui.QPainterPath()
-        
+
         size = 13
         assert size % 2, "Cursor triangle size must be odd"
 
@@ -996,7 +1032,7 @@ class TraceBar(QtWidgets.QWidget):
         # compute the y coordinate / line to center the user cursor around
         cursor_y = self._idx2pos(self.reader.idx)
         draw_reader_cursor = bool(cursor_y != INVALID_IDX)
-            
+
         if self.cells_visible:
             cell_y = cursor_y + self._cell_border
             cell_body_height = self._cell_height - self._cell_border
@@ -1005,7 +1041,7 @@ class TraceBar(QtWidgets.QWidget):
         # the top point of the triangle
         top_x = 0
         top_y = cursor_y - (size // 2) # vertically align the triangle so the tip matches the cross section
-        
+
         # bottom point of the triangle
         bottom_x = top_x
         bottom_y = top_y + size - 1
@@ -1016,7 +1052,7 @@ class TraceBar(QtWidgets.QWidget):
 
         # start drawing from the 'top' of the triangle
         path.moveTo(top_x, top_y)
-        
+
         # generate the triangle path / shape
         path.lineTo(bottom_x, bottom_y)
         path.lineTo(tip_x, tip_y)
@@ -1055,8 +1091,8 @@ class TraceBar(QtWidgets.QWidget):
                 self._painter_cursor.drawLine(viz_x, hovered_y, viz_w, hovered_y)
 
         if not draw_reader_cursor:
-            return 
-        
+            return
+
         # paint the defined triangle
         self._painter_cursor.setPen(self.pctx.palette.trace_cursor_border)
         self._painter_cursor.setBrush(self.pctx.palette.trace_cursor)
@@ -1067,7 +1103,7 @@ class TraceBar(QtWidgets.QWidget):
         Draw a region selection rect.
         """
 
-        # 
+        #
         # NOTE: DO NOT REMOVE !!! Qt will CRASH if we do not explicitly delete
         # these here (dangling internal pointer to device/image otherwise?!?)
         #
@@ -1079,7 +1115,7 @@ class TraceBar(QtWidgets.QWidget):
         self._image_selection.fill(QtCore.Qt.transparent)
         self._painter_selection = QtGui.QPainter(self._image_selection)
 
-        # active / on-going selection event 
+        # active / on-going selection event
         if self._idx_pending_selection_start != INVALID_IDX:
             start_idx = self._idx_pending_selection_start
             end_idx = self._idx_pending_selection_end
@@ -1101,7 +1137,7 @@ class TraceBar(QtWidgets.QWidget):
 
         # TODO/FUTURE: real border math
         viz_x, viz_y = self.viz_pos
-        
+
         x = viz_x
         y = start_y
         w = viz_w
@@ -1116,13 +1152,13 @@ class TraceBar(QtWidgets.QWidget):
         """
         wid_w, wid_h = self.width(), self.height()
 
-        # 
+        #
         # NOTE: DO NOT REMOVE !!! Qt will CRASH if we do not explicitly delete
         # these here (dangling internal pointer to device/image otherwise?!?)
         #
 
         del self._painter_border
-        
+
         self._image_border = QtGui.QImage(wid_w, wid_h, QtGui.QImage.Format_ARGB32)
         self._image_border.fill(QtCore.Qt.transparent)
         self._painter_border = QtGui.QPainter(self._image_border)
@@ -1153,7 +1189,7 @@ class TraceBar(QtWidgets.QWidget):
         Notify listeners of a trace slice selection change event.
         """
         notify_callback(self._selection_changed_callbacks, start_idx, end_idx)
-        
+
 #-----------------------------------------------------------------------------
 # Trace View
 #-----------------------------------------------------------------------------
@@ -1175,8 +1211,8 @@ class TraceView(QtWidgets.QWidget):
         self.trace_local.hide()
 
     def detach_reader(self):
-        self.trace_global.reset() 
-        self.trace_local.reset() 
+        self.trace_global.reset()
+        self.trace_local.reset()
         self.trace_local.hide()
 
     def _init_bars(self):
@@ -1187,13 +1223,13 @@ class TraceView(QtWidgets.QWidget):
         self.trace_global.selection_changed(self.trace_local._zoom_selection_changed)
         self.trace_local.selection_changed(self.trace_global._global_selection_changed)
 
-        # connect other signals 
-        self.pctx.breakpoints.model.focused_breakpoint_changed(self.trace_global._focused_breakpoint_changed)
-        self.pctx.breakpoints.model.focused_breakpoint_changed(self.trace_local._focused_breakpoint_changed)
+        # connect other signals
+        self.pctx.breakpoints.model.breakpoints_changed(self.trace_global._breakpoints_changed)
+        self.pctx.breakpoints.model.breakpoints_changed(self.trace_local._breakpoints_changed)
 
         # hide the zoom bar by default
         self.trace_local.hide()
-        
+
         # setup the layout and spacing for the tracebar
         hbox = QtWidgets.QHBoxLayout(self)
         hbox.setContentsMargins(3, 3, 3, 3)
@@ -1262,6 +1298,6 @@ class TraceDock(QtWidgets.QToolBar):
 
     def attach_reader(self, reader):
         self.view.attach_reader(reader)
-    
+
     def detach_reader(self):
         self.view.detach_reader()

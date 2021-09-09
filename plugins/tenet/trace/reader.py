@@ -16,7 +16,7 @@ import logging
 #    is responsible for the navigating a loaded trace file, providing 'high
 #    level' APIs one might expect to 'efficiently' query a program for
 #    registers or memory at any timestamp of execution.
-# 
+#
 #    Please be mindful that like the TraceFile implementation, TraceReader
 #    should be re-written entirely in a native language. Under the hood, it's
 #    not exactly pretty. It was written to make the plugin simple to install
@@ -42,7 +42,7 @@ class TraceDelta(object):
     """
     Trace Delta
     """
-    
+
     def __init__(self, registers, mem_read, mem_write):
         self.registers = registers
         self.mem_reads = mem_read
@@ -199,7 +199,7 @@ class TraceReader(object):
 
         else:
             raise NotImplementedError
-        
+
         if idx == -1:
             return False
 
@@ -243,7 +243,7 @@ class TraceReader(object):
 
         else:
             raise NotImplementedError
-        
+
         if idx == -1:
             return False
 
@@ -265,7 +265,7 @@ class TraceReader(object):
     def step_backward(self, n=1, step_over=False):
         """
         Step the trace backwards.
-        
+
         If step_over=True, and a disassembler context is available to the
         trace reader, it will attempt to step over calls while stepping.
         """
@@ -294,14 +294,14 @@ class TraceReader(object):
         # find the next time the instruction after this instruction is
         # executed in the trace
         #
-        
+
         next_idx = self.find_next_execution(next_address, self.idx)
 
         #
         # the instruction after the call does not appear in the trace,
         # so just fall-back to 'step into' behavior
         #
-        
+
         if next_idx == -1:
             self.seek(self.idx + 1)
             return
@@ -336,7 +336,7 @@ class TraceReader(object):
         #
 
         if self.dctx.is_call_insn(prev_address):
-            
+
             # get the previous stack pointer address
             sp = self.get_register(self.arch.SP, self.idx - 1)
 
@@ -374,7 +374,7 @@ class TraceReader(object):
     #-------------------------------------------------------------------------
     # Timestamp API
     #-------------------------------------------------------------------------
-    
+
     #
     # in this section, you will find references to 'resolution'. this is a
     # knob that the trace reader uses to fetch 'approximate' results from
@@ -391,8 +391,8 @@ class TraceReader(object):
     # given a 10 million instruction trace, and a 30px by 1000px image
     # buffer to viualize said trace... there is very little reason to fetch
     # 100_000 unique timestamps that all fall within one vertical pixel of
-    # the rendered visualization. 
-    # 
+    # the rendered visualization.
+    #
     # instead, we can search the trace in arbitrary resolution 'windows' of
     # roughly 1px (pixel resolution can be calculated based on the length of
     # the trace execution vs the length of the viz in pixels) and fetch results
@@ -445,7 +445,7 @@ class TraceReader(object):
                 except ValueError:
                     idx = seg_end + 1
                     break
-                
+
                 # we got a hit within the resolution window, save it
                 current_idx = idx + idx_offset
                 output.append(current_idx)
@@ -472,7 +472,22 @@ class TraceReader(object):
         """
         return self.get_memory_accesses_between(address, 0, self.trace.length, resolution)
 
-    def get_memory_accesses_between(self, address, start_idx, end_idx, resolution=1):
+
+    def get_memory_reads_between(self, address, start_idx, end_idx, resolution=1):
+        """
+        Return a list of timestamps that read from a given memory address in the given slice.
+        """
+        reads, _ = self.get_memory_accesses_between(address, start_idx, end_idx, resolution, BreakpointType.READ)
+        return reads
+
+    def get_memory_writes_between(self, address, start_idx, end_idx, resolution=1):
+        """
+        Return a list of timestamps that write to a given memory address in the given slice.
+        """
+        _, writes = self.get_memory_accesses_between(address, start_idx, end_idx, resolution, BreakpointType.WRITE)
+        return writes
+
+    def get_memory_accesses_between(self, address, start_idx, end_idx, resolution=1, access_type=BreakpointType.ACCESS):
         """
         Return a tuple of lists (read, write) containing timestamps that access a given memory address in the given slice.
         """
@@ -488,14 +503,14 @@ class TraceReader(object):
         reads, writes = [], []
         access_mask = self.trace.get_aligned_address_mask(address, 1)
 
-        # clamp the search incase the given params are a bit wonky 
+        # clamp the search incase the given params are a bit wonky
         idx = max(0, start_idx)
         end_idx = min(end_idx, self.trace.length)
         assert idx < end_idx
 
         next_resolution = [idx, idx]
 
-        # search through the trace 
+        # search through the trace
         while idx < end_idx:
 
             # fetch a segment to search forward through
@@ -506,30 +521,29 @@ class TraceReader(object):
             seg_end = min(seg_base + seg.length, end_idx)
             logger.debug(f"seg #{seg.id}, {seg.base_idx:,} --> {seg.base_idx+seg.length:,} -- IDX PTR {idx:,}")
 
-            mem_sets = \
-            [
-                (seg.read_idxs, seg.read_addrs, seg.read_masks, reads),
-                (seg.write_idxs, seg.write_addrs, seg.write_masks, writes),
-            ]
+            mem_sets = []
+
+            if access_type & BreakpointType.READ:
+                mem_sets.append((seg.read_idxs, seg.read_addrs, seg.read_masks, reads))
+            if access_type & BreakpointType.WRITE:
+                mem_sets.append((seg.write_idxs, seg.write_addrs, seg.write_masks, writes))
 
             for i, mem_type in enumerate(mem_sets):
-                #print("mem", i)
                 idxs, addrs, masks, output = mem_type
 
                 cumulative_index = 0
                 current_target = next_resolution[i]
 
                 while current_target < seg_end:
-                    #print("while", current_target)
 
                     try:
                         index = addrs.index(mapped_address)
                     except ValueError:
                         break
-                    
+
                     cumulative_index += index
                     current_idx = seg_base + idxs[index]
-                    
+
                     #
                     # there was a hit to the mapped address, which is aligned
                     # to the arch pointer size... check if the requested addr
@@ -561,7 +575,7 @@ class TraceReader(object):
 
                     addrs = addrs[skip_index:]
                     idxs = idxs[skip_index:]
-                    
+
                     cumulative_index += (skip_index - index)
 
                 next_resolution[i] = current_target
@@ -569,14 +583,42 @@ class TraceReader(object):
             idx = seg_end + 1
 
         return (reads, writes)
-    
+
+    def get_memory_region_reads(self, address, length, resolution=1):
+        """
+        Return a list of timestamps that read from the given memory region.
+        """
+        reads, _ = self.get_memory_region_accesses_between(address, length, 0, self.trace.length, resolution, BreakpointType.READ)
+        return reads
+
+    def get_memory_region_reads_between(self, address, length, start_idx, end_idx, resolution=1):
+        """
+        Return a list of timestamps that read from the given memory region in the given time slice.
+        """
+        reads, _ = self.get_memory_region_accesses_between(address, length, start_idx, end_idx, resolution, BreakpointType.READ)
+        return reads
+
+    def get_memory_region_writes(self, address, length, resolution=1):
+        """
+        Return a list of timestamps that write to the given memory region.
+        """
+        _, writes = self.get_memory_region_accesses_between(address, length, 0, self.trace.length, resolution, BreakpointType.WRITE)
+        return writes
+
+    def get_memory_region_writes_between(self, address, length, start_idx, end_idx, resolution=1):
+        """
+        Return a list of timestamps that write to the given memory region in the given time slice.
+        """
+        _, writes = self.get_memory_region_accesses_between(address, length, start_idx, end_idx, resolution, BreakpointType.WRITE)
+        return writes
+
     def get_memory_region_accesses(self, address, length, resolution=1):
         """
         Return a tuple of (read, write) containing timestamps that access the given memory region.
         """
         return self.get_memory_region_accesses_between(address, length, 0, self.trace.length, resolution)
-    
-    def get_memory_region_accesses_between(self, address, length, start_idx, end_idx, resolution=1):
+
+    def get_memory_region_accesses_between(self, address, length, start_idx, end_idx, resolution=1, access_type=BreakpointType.ACCESS):
         """
         Return a tuple of (read, write) containing timestamps that access the given memory region in the given time slice.
         """
@@ -588,7 +630,7 @@ class TraceReader(object):
         reads, writes = [], []
         targets = self._region_to_targets(address, length)
 
-        # clamp the search incase the given params are a bit wonky 
+        # clamp the search incase the given params are a bit wonky
         idx = max(0, start_idx)
         end_idx = min(end_idx, self.trace.length)
         assert idx < end_idx
@@ -607,19 +649,18 @@ class TraceReader(object):
 
             #print("-"*50)
             #print(f"seg #{seg.id}, {seg.base_idx:,} --> {seg.base_idx+seg.length:,} -- IDX PTR {idx:,}")
-            
-            mem_sets = \
-            [
-                (seg.read_idxs, seg.read_addrs, seg.read_masks, reads),
-                (seg.write_idxs, seg.write_addrs, seg.write_masks, writes),
-            ]
+
+            mem_sets = []
+
+            if access_type & BreakpointType.READ:
+                mem_sets.append((seg.read_idxs, seg.read_addrs, seg.read_masks, reads))
+            if access_type & BreakpointType.WRITE:
+                mem_sets.append((seg.write_idxs, seg.write_addrs, seg.write_masks, writes))
 
             for i, mem_type in enumerate(mem_sets):
                 idxs, addrs, masks, output = mem_type
                 hits, first_hit = {}, len(addrs)
                 resolution_index = next_resolution[i]
-                #print("-"*30)
-                #print("mem", i)
 
                 #
                 # check each 'aligned address' (actually an id #) within the given region to see
@@ -649,10 +690,10 @@ class TraceReader(object):
 
                 #
                 # if we hit this, it means no memory accesses of this
-                # type (eg, reads) occured to the region of memory in 
+                # type (eg, reads) occured to the region of memory in
                 # this segment.
                 #
-                # there's nothing else to process for this memory set, 
+                # there's nothing else to process for this memory set,
                 # so just break and move onto the next set (eg, writes)
                 #
 
@@ -685,7 +726,7 @@ class TraceReader(object):
                         resolution_index += 1
 
                 next_resolution[i] = resolution_index
-                
+
             idx = seg_end + 1
 
         return (reads, writes)
@@ -707,16 +748,16 @@ class TraceReader(object):
         output = []
         dctx, idx = self.dctx, self.idx
         address = self.get_ip(idx)
-        
+
         # (reverse) step over any call instructions
         while len(output) < n and idx > 0:
-        
+
             prev_address = dctx.get_prev_insn(address)
             did_step_over = False
 
             # call instruction
             if prev_address != -1 and dctx.is_call_insn(prev_address):
-                
+
                 # get the previous stack pointer address
                 sp = self.get_register(self.arch.SP, idx - 1)
 
@@ -730,15 +771,15 @@ class TraceReader(object):
                 #
                 # if the address off the stack matches the current address,
                 # we can assume that we just returned from somewhere.
-                # 
-                # 99% of the time, this will have been from the call insn at 
+                #
+                # 99% of the time, this will have been from the call insn at
                 # prev_address, so let's just assume that is the case and
                 # 'reverse step over' onto that.
                 #
                 # NOTE: technically, we can put in more checks and stuff to
                 # try and ensure this is 'correct' but, step over and reverse
                 # step over are kind of an imperfect science as is...
-                # 
+                #
 
                 if maybe_ret_address == address:
                     prev_idx = self.find_prev_execution(prev_address, idx)
@@ -766,7 +807,7 @@ class TraceReader(object):
                 prev_idx = idx - 1
 
             prev_address = self.get_ip(prev_idx)
-            
+
             # no address was returned, so the end of trace was reached
             if prev_address == -1:
                 break
@@ -782,7 +823,7 @@ class TraceReader(object):
     def get_next_ips(self, n, step_over=False):
         """
         Return the next N executed instruction addresses.
-        
+
         If step_over=True, and a disassembler context is available to the
         trace reader, it will attempt to step over calls while stepping.
         """
@@ -792,11 +833,11 @@ class TraceReader(object):
             start = min(self.idx + 1, self.trace.length)
             end = min(start + n, self.trace.length)
             return [self.get_ip(idx) for idx in range(start, end)]
-        
+
         output = []
         dctx, idx = self.dctx, self.idx
         address = self.get_ip(idx)
-        
+
         # step over any call instructions
         while len(output) < n and idx < (self.trace.length - 1):
 
@@ -851,7 +892,7 @@ class TraceReader(object):
         if idx is None:
             idx = self.idx + 1
 
-        try: 
+        try:
             mapped_ip = self.trace.get_mapped_ip(address)
         except ValueError:
             return -1
@@ -882,7 +923,7 @@ class TraceReader(object):
         if idx is None:
             idx = self.idx - 1
 
-        try: 
+        try:
             mapped_ip = self.trace.get_mapped_ip(address)
         except ValueError:
             return -1
@@ -988,12 +1029,12 @@ class TraceReader(object):
                         break
 
                     if masks[normal_index] & access_mask:
-                        
+
                         assert addrs[normal_index] == mapped_address
                         assert masks[normal_index] & access_mask
 
                         # ensure that the memory access occurs on or after the starting idx
-                        hit_idx = seg_base + idxs[normal_index] 
+                        hit_idx = seg_base + idxs[normal_index]
                         if idx <= hit_idx:
                             accesses.append(seg_base + idxs[normal_index])
                             break
@@ -1060,19 +1101,19 @@ class TraceReader(object):
                         break
 
                     if masks[normal_index] & access_mask:
-                        
+
                         assert addrs[normal_index] == mapped_address
                         assert masks[normal_index] & access_mask
 
                         # ensure that the memory access occurs on or before the starting idx
-                        hit_idx = seg_base + idxs[normal_index] 
+                        hit_idx = seg_base + idxs[normal_index]
                         if hit_idx <= idx:
                             accesses.append(seg_base + idxs[normal_index])
                             break
 
                     # the hit was no good.. 'step' past it and keep searching
                     search_addrs = search_addrs[reverse_index+1:]
-                    normal_index -= 1 
+                    normal_index -= 1
 
             if accesses:
                 return min(accesses, key=lambda x:abs(x-idx))
@@ -1118,7 +1159,7 @@ class TraceReader(object):
             seg_base = seg.base_idx
 
             mem_sets = []
-            
+
             if access_type & BreakpointType.READ:
                 mem_sets.append((seg.read_idxs, seg.read_addrs, seg.read_masks))
             if access_type & BreakpointType.WRITE:
@@ -1153,15 +1194,15 @@ class TraceReader(object):
 
                     except ValueError:
                         continue
-                    
+
                     hits[address_id] = address_mask
 
                 #
                 # if we hit this, it means no memory accesses of this
-                # type (eg, reads) occured to the region of memory in 
+                # type (eg, reads) occured to the region of memory in
                 # this segment.
                 #
-                # there's nothing else to process for this memory set, 
+                # there's nothing else to process for this memory set,
                 # so just break and move onto the next set (eg, writes)
                 #
 
@@ -1274,7 +1315,7 @@ class TraceReader(object):
 
                     except ValueError:
                         continue
-                
+
                     #
                     # ignore hits that are less than the starting timestamp
                     # because we are searching FORWARD, deeper into time
@@ -1283,15 +1324,15 @@ class TraceReader(object):
                     #if seg_base + idxs[index] <= idx:
                     #    print(f"TOSSING {seg_base+idxs[index]:,}, TOO CLOSE!")
                     #    continue
-                    
+
                     hits[address_id] = address_mask
 
                 #
                 # if we hit this, it means no memory accesses of this
-                # type (eg, reads) occured to the region of memory in 
+                # type (eg, reads) occured to the region of memory in
                 # this segment.
                 #
-                # there's nothing else to process for this memory set, 
+                # there's nothing else to process for this memory set,
                 # so just break and move onto the next set (eg, writes)
                 #
 
@@ -1351,7 +1392,7 @@ class TraceReader(object):
 
         starting_segment = self.trace.get_segment(idx)
         target_mask_ids = self.trace.get_reg_mask_ids_containing(reg_name)
-        
+
         # search forward through the remaining segments
         for seg_id in range(starting_segment.id , len(self.trace.segments)):
             seg = self.trace.segments[seg_id]
@@ -1397,7 +1438,7 @@ class TraceReader(object):
 
         starting_segment = self.trace.get_segment(idx)
         target_mask_ids = self.trace.get_reg_mask_ids_containing(reg_name)
-        
+
         # search backwards through the remaining segments
         for seg_id in range(starting_segment.id, -1, -1):
             seg = self.trace.segments[seg_id]
@@ -1472,7 +1513,7 @@ class TraceReader(object):
 
             output.append((mapped_address, access_mask))
 
-            # continue moving through the region 
+            # continue moving through the region
             length -= ADDRESS_ALIGMENT
             aligned_address += ADDRESS_ALIGMENT
 
@@ -1496,7 +1537,7 @@ class TraceReader(object):
     def get_register(self, reg_name, idx=None):
         """
         Return a single register value.
-        
+
         If a timestamp (idx) is provided, that will be used instead of the current timestamp.
         """
         return self.get_registers([reg_name], idx)[reg_name]
@@ -1519,7 +1560,7 @@ class TraceReader(object):
         #
         # if the query matches the cached (most recently acces)
         #
-        
+
         output_registers, target_registers = {}, reg_names.copy()
 
         # sanity checks
@@ -1537,7 +1578,7 @@ class TraceReader(object):
                 if name in self._cached_registers:
                     output_registers[name] = self._cached_registers[name]
                     target_registers.remove(name)
-        
+
         #
         # the trace PC is stored differently, and is tacked on at the end of
         # the query (if it is requested). we remove it here so we don't search
@@ -1605,7 +1646,7 @@ class TraceReader(object):
         else:
             self._cached_registers = output_registers
 
-        # the timestamp for the cached register set 
+        # the timestamp for the cached register set
         self._idx_cached_registers = idx
 
         # return the register set for this trace index
@@ -1614,7 +1655,7 @@ class TraceReader(object):
     def get_memory(self, address, length, idx=None):
         """
         Return the requested memeory.
-        
+
         If a timestamp (idx) is provided, that will be used instead of the current timestamp.
         """
         if idx is None:
@@ -1633,7 +1674,7 @@ class TraceReader(object):
         get_mapped_address = self.trace.get_mapped_address
         mem_addrs = self.trace.mem_addrs
         mem_masks = self.trace.mem_masks
-        
+
         missing_mem = {}
         for address in aligned_addresses:
 
@@ -1648,7 +1689,7 @@ class TraceReader(object):
 
             if mapped_address == -1:
                 continue
-            
+
             #
             # save the mask for what bytes at the aligned address should
             # exist in the trace
@@ -1660,9 +1701,9 @@ class TraceReader(object):
         missing_mem.pop(-1, None)
 
         #
-        # 
         #
-        
+        #
+
         starting_seg = self.trace.get_segment(idx)
         seg = starting_seg
 
@@ -1725,9 +1766,9 @@ class TraceReader(object):
 
         for mapped_address, hits in segment_hits.items():
             #print(f"PROCESSING HIT {self.trace.mem_addrs[mapped_address]:08X}")
-            
+
             #
-            # sort the hits to an aligned address by highest idx (most-recent) 
+            # sort the hits to an aligned address by highest idx (most-recent)
             # NOTE: mem set id will be the second sort param (writes take precedence)
             #
 
@@ -1751,7 +1792,7 @@ class TraceReader(object):
                 # if this access doesn't contain any new data of interest, ignore it
                 if not missing_mask & current_mask:
                     continue
-                
+
                 found_mask = missing_mask & current_mask
                 found_mem = seg.get_mem_data(hit_id, set_id, found_mask)
                 #print(f"FOUND MEM {found_mem} FOUND MASK {found_mask:02X}")
@@ -1794,7 +1835,7 @@ class TraceReader(object):
                 # skip the current address if it doesn't get touched by this seg
                 if not(mapped_address in mem_delta):
                     continue
-                
+
                 #
                 # fetch the 'value' (1-8 bytes) that this segment sets at the
                 # the current aligned address
@@ -1809,7 +1850,7 @@ class TraceReader(object):
 
                 if not (missing_mask & mv.mask):
                     continue
-                
+
                 #
                 # create a mask of the missing bytes, that we can resolve with
                 # the memory value (mv) provided by this snapshot
@@ -1867,7 +1908,7 @@ class TraceReader(object):
 
         pack_fmt = 'Q' if self.arch.POINTER_SIZE == 8 else 'I'
         return struct.unpack(pack_fmt, buffer.data)[0]
-        
+
     #----------------------------------------------------------------------
     # Callbacks
     #----------------------------------------------------------------------
