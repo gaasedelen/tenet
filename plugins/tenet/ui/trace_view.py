@@ -49,6 +49,7 @@ class TraceBar(QtWidgets.QWidget):
         # the first and last visible idx in this visualization
         self.start_idx = 0
         self.end_idx = 0
+        self._end_idx_internal = 0
         self._last_trace_idx = 0
 
         # the 'uncommitted' / in-progress user selection of a trace region
@@ -213,6 +214,7 @@ class TraceBar(QtWidgets.QWidget):
         # set the bounds of the trace
         self.start_idx = max(0, start_idx)
         self.end_idx = end_idx
+        self._end_idx_internal = end_idx
 
         # update drawing metrics, note that this can 'tweak' end_idx to improve cell rendering
         self._refresh_painting_metrics()
@@ -381,7 +383,7 @@ class TraceBar(QtWidgets.QWidget):
         trigger when a user is dragging to resize a window. we only really
         care to recompute the visualization when they stop 'resizing' it.
         """
-        self.set_bounds(self.start_idx, self.end_idx)
+        self.set_bounds(self.start_idx, self._end_idx_internal)
 
     def _refresh_painting_metrics(self):
         """
@@ -392,7 +394,7 @@ class TraceBar(QtWidgets.QWidget):
         self._cell_spacing = 0
 
         # how many 'instruction' cells *must* be shown based on current selection?
-        num_cell = self.end_idx - self.start_idx
+        num_cell = self._end_idx_internal - self.start_idx
         if not num_cell:
             return
 
