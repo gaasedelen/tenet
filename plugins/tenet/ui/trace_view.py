@@ -532,12 +532,7 @@ class TraceBar(QtWidgets.QWidget):
         idx = self.start_idx + relative_idx
 
         # clamp idx to the start / end of visible tracebar range
-        if idx < self.start_idx:
-            idx = self.start_idx
-        elif idx >= self.end_idx:
-            idx = self.end_idx - 1
-
-        return idx
+        return self._clamp_idx(idx)
 
     def _compute_pixel_distance(self, y, idx):
         """
@@ -763,6 +758,16 @@ class TraceBar(QtWidgets.QWidget):
                 reads, writes = reader.get_memory_region_accesses_between(bp.address, bp.length, self.start_idx, self.end_idx, density)
             self._idx_reads.extend(reads)
             self._idx_writes.extend(writes)
+
+    def _clamp_idx(self, idx):
+        """
+        Clamp the given idx to the bounds of this trace view.
+        """
+        if idx < self.start_idx:
+            return self.start_idx
+        elif idx >= self.end_idx:
+            return self.end_idx - 1
+        return idx
 
     #-------------------------------------------------------------------------
     # Drawing
@@ -1131,6 +1136,13 @@ class TraceBar(QtWidgets.QWidget):
 
         # no region selection, nothing to do...
         else:
+            return
+
+        start_idx = self._clamp_idx(start_idx)
+        end_idx = self._clamp_idx(end_idx)
+
+        # nothing to draw
+        if start_idx == end_idx:
             return
 
         start_y = self._idx2pos(start_idx)
