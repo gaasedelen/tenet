@@ -560,10 +560,20 @@ class TraceBar(QtWidgets.QWidget):
         """
         Update the trace visualization based on the mouse hover.
         """
+        self._hovered_idx = INVALID_IDX
 
         # see if there's an interesting trace event close to the hover
         hovered_idx = self._pos2idx(current_y)
         closest_idx = self._get_closest_highlighted_idx(hovered_idx)
+
+        #
+        # if the closest highlighted event (mem access, breakpoint)
+        # is outside the trace view bounds, then we don't need to
+        # do any special hover highlighting...
+        #
+
+        if not(self.start_idx <= closest_idx < self.end_idx):
+            return
 
         #
         # compute the on-screen pixel distance between the hover and the
@@ -571,16 +581,20 @@ class TraceBar(QtWidgets.QWidget):
         #
 
         px_distance = self._compute_pixel_distance(current_y, closest_idx)
-        logger.debug(f"hovered idx {hovered_idx:,}, closest idx {closest_idx:,}, dist {px_distance}")
+        #logger.debug(f"hovered idx {hovered_idx:,}, closest idx {closest_idx:,}, dist {px_distance} (start: {self.start_idx:,} end: {self.end_idx:,}")
+        if px_distance == -1:
+            return
 
-        #
+        # clamp the lock-on distance depending on the scale of zoom / cell size
         lockon_distance = max(self._magnetism_distance, self._cell_height)
 
-        # if the event is within the magnetized distance, lock on to it
+        #
+        # if the trace event is within the magnetized distance of the user
+        # cursor, lock on to it. this makes 'small' things easier to click
+        #
+
         if px_distance < lockon_distance:
             self._hovered_idx = closest_idx
-        else:
-            self._hovered_idx = INVALID_IDX
 
     def _update_selection(self, y):
         """
