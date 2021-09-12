@@ -35,6 +35,7 @@ from tenet.util.log import pmsg
 from tenet.util.misc import register_callback, notify_callback
 from tenet.trace.file import TraceFile
 from tenet.trace.types import TraceMemory
+from tenet.trace.analysis import TraceAnalysis
 
 logger = logging.getLogger("Tenet.Trace.Reader")
 
@@ -60,6 +61,7 @@ class TraceReader(object):
 
         # load the given trace file from disk
         self.trace = TraceFile(filepath, architecture)
+        self.analysis = TraceAnalysis(self.trace, dctx)
 
         self._idx_cached_registers = -1
         self._cached_registers = {}
@@ -80,6 +82,13 @@ class TraceReader(object):
         Return the current instruction pointer.
         """
         return self.get_register(self.arch.IP)
+
+    @property
+    def rebased_ip(self):
+        """
+        Return a rebased version of the current instruction pointer (if available).
+        """
+        return self.analysis.rebase_pointer(self.ip)
 
     @property
     def sp(self):
@@ -279,23 +288,26 @@ class TraceReader(object):
         Step the trace forward over n instructions / calls.
         """
         address = self.get_ip(self.idx)
+        bin_address = self.analysis.rebase_pointer(address)
 
         #
         # get the address for the linear instruction address after the
         # current instruction
         #
 
-        next_address = self.dctx.get_next_insn(address)
-        if next_address == -1:
+        bin_next_address = self.dctx.get_next_insn(bin_address)
+        if bin_next_address == -1:
             self.seek(self.idx + 1)
             return
+
+        trace_next_address = self.analysis.rebase_pointer(bin_next_address)
 
         #
         # find the next time the instruction after this instruction is
         # executed in the trace
         #
 
-        next_idx = self.find_next_execution(next_address, self.idx)
+        next_idx = self.find_next_execution(trace_next_address, self.idx)
 
         #
         # the instruction after the call does not appear in the trace,
@@ -313,8 +325,9 @@ class TraceReader(object):
         Step the trace backward over n instructions / calls.
         """
         address = self.get_ip(self.idx)
+        bin_address = self.analysis.rebase_pointer(address)
 
-        prev_address = self.dctx.get_prev_insn(address)
+        bin_prev_address = self.dctx.get_prev_insn(bin_address)
 
         #
         # could not get the address of the instruction prior to the current
@@ -325,7 +338,7 @@ class TraceReader(object):
         # performant backend than the python prototype that powers this
         #
 
-        if prev_address == -1:
+        if bin_prev_address == -1:
             self.seek(self.idx - 1)
             return
 
@@ -335,7 +348,7 @@ class TraceReader(object):
         # and also pretty tricky to handle...
         #
 
-        if self.dctx.is_call_insn(prev_address):
+        if self.dctx.is_call_insn(bin_prev_address):
 
             # get the previous stack pointer address
             sp = self.get_register(self.arch.SP, self.idx - 1)
@@ -364,7 +377,9 @@ class TraceReader(object):
                 self.seek(self.idx - 1)
                 return
 
-        prev_idx = self.find_prev_execution(prev_address, self.idx)
+        trace_prev_address = self.analysis.rebase_pointer(bin_prev_address)
+
+        prev_idx = self.find_prev_execution(trace_prev_address, self.idx)
         if prev_idx == -1:
             self.seek(self.idx - 1)
             return
@@ -747,16 +762,17 @@ class TraceReader(object):
 
         output = []
         dctx, idx = self.dctx, self.idx
-        address = self.get_ip(idx)
+        trace_address = self.get_ip(idx)
+        bin_address = self.analysis.rebase_pointer(trace_address)
 
         # (reverse) step over any call instructions
         while len(output) < n and idx > 0:
 
-            prev_address = dctx.get_prev_insn(address)
+            bin_prev_address = dctx.get_prev_insn(bin_address)
             did_step_over = False
 
             # call instruction
-            if prev_address != -1 and dctx.is_call_insn(prev_address):
+            if bin_prev_address != -1 and dctx.is_call_insn(bin_prev_address):
 
                 # get the previous stack pointer address
                 sp = self.get_register(self.arch.SP, idx - 1)
@@ -773,7 +789,7 @@ class TraceReader(object):
                 # we can assume that we just returned from somewhere.
                 #
                 # 99% of the time, this will have been from the call insn at
-                # prev_address, so let's just assume that is the case and
+                # bin_prev_address, so let's just assume that is the case and
                 # 'reverse step over' onto that.
                 #
                 # NOTE: technically, we can put in more checks and stuff to
@@ -781,8 +797,9 @@ class TraceReader(object):
                 # step over are kind of an imperfect science as is...
                 #
 
-                if maybe_ret_address == address:
-                    prev_idx = self.find_prev_execution(prev_address, idx)
+                if maybe_ret_address == trace_address:
+                    trace_prev_address = self.analysis.rebase_pointer(bin_prev_address)
+                    prev_idx = self.find_prev_execution(trace_prev_address, idx)
                     did_step_over = bool(prev_idx != -1)
 
             #
@@ -795,7 +812,8 @@ class TraceReader(object):
             #
 
             if not did_step_over:
-                prev_idx = self.find_prev_execution(prev_address, idx)
+                trace_prev_address = self.analysis.rebase_pointer(bin_prev_address)
+                prev_idx = self.find_prev_execution(trace_prev_address, idx)
 
             #
             # uh, wow okay we're pretty lost and have no idea if there is
@@ -806,15 +824,16 @@ class TraceReader(object):
             if prev_idx == -1:
                 prev_idx = idx - 1
 
-            prev_address = self.get_ip(prev_idx)
+            trace_prev_address = self.get_ip(prev_idx)
 
             # no address was returned, so the end of trace was reached
-            if prev_address == -1:
+            if trace_prev_address == -1:
                 break
 
             # save the results and continue looping
-            output.append(prev_address)
-            address = prev_address
+            output.append(trace_prev_address)
+            trace_address = trace_prev_address
+            bin_address = self.analysis.rebase_pointer(trace_address)
             idx = prev_idx
 
         # return the list of addresses to be 'executed' next
@@ -836,7 +855,8 @@ class TraceReader(object):
 
         output = []
         dctx, idx = self.dctx, self.idx
-        address = self.get_ip(idx)
+        trace_address = self.get_ip(idx)
+        bin_address = self.analysis.rebase_pointer(trace_address)
 
         # step over any call instructions
         while len(output) < n and idx < (self.trace.length - 1):
@@ -846,15 +866,16 @@ class TraceReader(object):
             # current (call) instruction
             #
 
-            next_address = dctx.get_next_insn(address)
+            bin_next_address = dctx.get_next_insn(bin_address)
 
             #
             # find the next time the instruction after this instruction is
             # executed in the trace
             #
 
-            if next_address != -1:
-                next_idx = self.find_next_execution(next_address, idx)
+            if bin_next_address != -1:
+                trace_next_address = self.analysis.rebase_pointer(bin_next_address)
+                next_idx = self.find_next_execution(trace_next_address, idx)
             else:
                 next_idx = -1
 
@@ -871,15 +892,15 @@ class TraceReader(object):
             # our stepping behavior
             #
 
-            next_address = self.get_ip(next_idx)
+            trace_next_address = self.get_ip(next_idx)
 
             # no address was returned, so the end of trace was reached
-            if next_address == -1:
+            if trace_next_address == -1:
                 break
 
             # save the results and continue looping
-            output.append(next_address)
-            address = next_address
+            output.append(trace_next_address)
+            bin_address = self.analysis.rebase_pointer(trace_next_address)
             idx = next_idx
 
         # return the list of addresses to be 'executed' next

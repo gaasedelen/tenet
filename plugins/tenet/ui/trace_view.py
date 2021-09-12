@@ -866,9 +866,10 @@ class TraceBar(QtWidgets.QWidget):
 
             # get the executed/code address for the current idx that will represent this line
             address = self.reader.get_ip(idx)
+            rebased_address = self.reader.analysis.rebase_pointer(address)
 
             # select the color for instructions that can be viewed with Tenet
-            if dctx.is_mapped(address):
+            if dctx.is_mapped(rebased_address):
                 painter.setPen(self.pctx.palette.trace_instruction)
 
             # unexplorable parts of the trace are 'greyed' out (eg, not in IDB)
@@ -924,9 +925,10 @@ class TraceBar(QtWidgets.QWidget):
 
             # get the executed/code address for the current idx that will represent this cell
             address = self.reader.get_ip(idx)
+            rebased_address = self.reader.analysis.rebase_pointer(address)
 
             # select the color for instructions that can be viewed with Tenet
-            if dctx.is_mapped(address):
+            if dctx.is_mapped(rebased_address):
                 painter.setBrush(cell_color)
 
             # unexplorable parts of the trace are 'greyed' out (eg, not in IDB)

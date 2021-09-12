@@ -440,18 +440,19 @@ class TenetIDA(TenetCore):
                 ida_color |= (0xFF - int(0xFF * percent)) << 24
 
                 # save the trail color
-                trail[address] = ida_color
+                rebased_address = ctx.reader.analysis.rebase_pointer(address)
+                trail[rebased_address] = ida_color
 
         for section in lines_in.sections_lines:
             for line in section:
                 address = line.at.toea()
                 
-                if address == ctx.reader.ip:
-                    color = current_color
-                elif address in backward_trail:
+                if address in backward_trail:
                     color = backward_trail[address]
                 elif address in forward_trail:
                     color = forward_trail[address]
+                elif address == ctx.reader.rebased_ip:
+                    color = current_color
                 else:
                     continue
 

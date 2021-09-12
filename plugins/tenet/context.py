@@ -294,7 +294,8 @@ class TenetContext(object):
         Handle UI actions for seeking to the next execution of the selected address.
         """
         address = disassembler[self].get_current_address()
-        result = self.reader.seek_to_next(address, BreakpointType.EXEC)
+        rebased_address = self.reader.analysis.rebase_pointer(address)
+        result = self.reader.seek_to_next(rebased_address, BreakpointType.EXEC)
 
         # TODO: blink screen? make failure more visible...
         if not result:
@@ -305,7 +306,8 @@ class TenetContext(object):
         Handle UI actions for seeking to the previous execution of the selected address.
         """
         address = disassembler[self].get_current_address()
-        result = self.reader.seek_to_prev(address, BreakpointType.EXEC)
+        rebased_address = self.reader.analysis.rebase_pointer(address)
+        result = self.reader.seek_to_prev(rebased_address, BreakpointType.EXEC)
 
         # TODO: blink screen? make failure more visible...
         if not result:
@@ -316,7 +318,8 @@ class TenetContext(object):
         Handle UI actions for seeking to the first execution of the selected address.
         """
         address = disassembler[self].get_current_address()
-        result = self.reader.seek_to_first(address, BreakpointType.EXEC)
+        rebased_address = self.reader.analysis.rebase_pointer(address)
+        result = self.reader.seek_to_first(rebased_address, BreakpointType.EXEC)
 
         # TODO: blink screen? make failure more visible...
         if not result:
@@ -327,7 +330,8 @@ class TenetContext(object):
         Handle UI actions for seeking to the final execution of the selected address.
         """
         address = disassembler[self].get_current_address()
-        result = self.reader.seek_to_final(address, BreakpointType.EXEC)
+        rebased_address = self.reader.analysis.rebase_pointer(address)
+        result = self.reader.seek_to_final(rebased_address, BreakpointType.EXEC)
 
         # TODO: blink screen? make failure more visible...
         if not result:
@@ -339,7 +343,7 @@ class TenetContext(object):
 
         This will make the disassembler track with the PC/IP of the trace reader. 
         """
-        disassembler[self].navigate(self.reader.ip)
+        disassembler[self].navigate(self.reader.rebased_ip)
 
     def _select_trace_file(self):
         """
