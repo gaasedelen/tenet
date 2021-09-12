@@ -136,7 +136,7 @@ static VOID OnThreadStart(THREADID tid, CONTEXT* ctxt, INT32 flags, VOID* v)
     char filename[128] = {};
     sprintf(filename, "%s.%u.log", KnobOutputFilePrefix.Value().c_str(), tid);
     data->m_trace->open(filename);
-    *data->m_trace << std::hex << std::setw(2) << std::setfill('0');
+    *data->m_trace << std::hex;
 
     // Save the recently created thread.
     PIN_GetLock(&context.m_thread_lock, 1);
@@ -251,7 +251,7 @@ VOID record_diff(const CONTEXT * cpu, ADDRINT pc, VOID* v)
         *OutFile << ",mr=0x" << data->mem_r_addr << ":";
 
         for(UINT32 i = 0; i < data->mem_r_size; i++) {
-            *OutFile << ((unsigned char)data->m_scratch[i] & 0xff);
+            *OutFile << std::hex << std::setw(2) << std::setfill('0') << ((unsigned char)data->m_scratch[i] & 0xff);
         }
 
         data->mem_r_size = 0;
@@ -265,7 +265,7 @@ VOID record_diff(const CONTEXT * cpu, ADDRINT pc, VOID* v)
         *OutFile << ",mr=0x" << data->mem_r2_addr << ":";
 
         for(UINT32 i = 0; i < data->mem_r2_size; i++) {
-            *OutFile << ((unsigned char)data->m_scratch[i] & 0xff);
+            *OutFile << std::hex << std::setw(2) << std::setfill('0') << ((unsigned char)data->m_scratch[i] & 0xff);
         }
 
         data->mem_r2_size = 0;
@@ -279,7 +279,7 @@ VOID record_diff(const CONTEXT * cpu, ADDRINT pc, VOID* v)
         *OutFile << ",mw=0x" << data->mem_w_addr << ":";
 
         for(UINT32 i = 0; i < data->mem_w_size; i++) {
-            *OutFile << ((unsigned char)data->m_scratch[i] & 0xff);
+            *OutFile << std::hex << std::setw(2) << std::setfill('0') << ((unsigned char)data->m_scratch[i] & 0xff);
         }
 
         data->mem_w_size = 0;
