@@ -1,5 +1,6 @@
 import os
 import time
+import zlib
 import array
 import bisect
 import ctypes
@@ -41,11 +42,6 @@ import collections
 #    versus the raw text trace. The trace file implementation will also seek
 #    out a matching file name with the '.tt' file extension, and prioritize
 #    loading that over a raw text trace.
-#
-#    NOTE/TODO: Sorry, but there are no controls in place to ensure that
-#    a Tenet Trace with a matching file name to a raw trace on disk actually
-#    match content-wise. So be careful if using generic trace file names,
-#    such as 'trace.log' and a resulting 'trace.tt'
 #
 
 #-----------------------------------------------------------------------------
@@ -106,6 +102,16 @@ REG_OFFSET_CACHE_INTERVAL = 4096
 #-----------------------------------------------------------------------------
 # Utils
 #-----------------------------------------------------------------------------
+
+def hash_file(filepath):
+    """
+    Return a CRC32 of the file at the given path.
+    """
+    crc = 0
+    with open(filepath, 'rb', 65536) as ins:
+        for x in range(int((os.stat(filepath).st_size / 65536)) + 1):
+            crc = zlib.crc32(ins.read(65536), crc)
+    return (crc & 0xFFFFFFFF)
 
 def number_of_bits_set(i):
     """
@@ -170,6 +176,7 @@ class TraceInfo(ctypes.Structure):
         ('mask_num',        ctypes.c_uint32),
         ('mem_idx_width',   ctypes.c_uint8),
         ('mem_addr_width',  ctypes.c_uint8),
+        ('original_hash',   ctypes.c_uint32),
     ]
 
 class SegmentInfo(ctypes.Structure):
@@ -285,6 +292,9 @@ class TraceFile(object):
 
         # the number of timestamps / 'instructions' for each trace segment
         self.segment_length = DEFAULT_SEGMENT_LENGTH
+
+        # the hash of the original / source log file
+        self.original_hash = None
 
         #
         # now that you have some idea of how the trace file is going to be
@@ -424,6 +434,7 @@ class TraceFile(object):
         header.mask_num = len(self.masks)
         header.mem_idx_width = width_from_type(self.mem_idx_type)
         header.mem_addr_width = width_from_type(self.mem_addr_type)
+        header.original_hash = self.original_hash
         mask_data = (ctypes.c_uint32 * len(self.masks))(*self.masks)
 
         # save the global trace data / header to the zip
@@ -453,12 +464,36 @@ class TraceFile(object):
         NOTE: THIS ROUTINE WILL ATTEMPT TO LOAD A PACKED TRACE INSTEAD OF A
         SELECTED RAW TEXT TRACE IF IT FINDS ONE AVAILABLE!!!
         """
+
+        # the user probably selected a '.tt' trace
         if zipfile.is_zipfile(self.filepath):
             self._load_packed_trace(self.filepath)
-        elif zipfile.is_zipfile(self.packed_filepath):
-            self._load_packed_trace(self.packed_filepath)
-        else:
-            self._load_text_trace(self.filepath)
+            return
+
+        #
+        # the user selected a '.txt' trace, but there is a '.tt' packed trace
+        # beside it, so let's check if the packed trace matches the text trace
+        #
+
+        if zipfile.is_zipfile(self.packed_filepath):
+            packed_crc = self._fetch_hash(self.packed_filepath)
+            text_crc = hash_file(self.filepath)
+
+            #
+            # the crc in the packed file seems to match the selected text log,
+            # so let's just load the packed trace as it should be faster
+            #
+
+            if packed_crc == text_crc:
+                self._load_packed_trace(self.packed_filepath)
+                return
+
+        #
+        # no luck loading / side-loading packed traces, so simply try to
+        # load the user selected trace as a normal text Tenet trace
+        #
+
+        self._load_text_trace(self.filepath)
 
     def _load_packed_trace(self, filepath):
         """
@@ -479,6 +514,16 @@ class TraceFile(object):
             self.arch = ArchAMD64()
         else:
             self.arch = ArchX86()
+
+    def _fetch_hash(self, filepath):
+        """
+        Return the original file hash (CRC32) from the given packed trace filepath.
+        """
+        header = TraceInfo()
+        with zipfile.ZipFile(filepath, 'r') as zip_archive:
+            with zip_archive.open('header', 'r') as f:
+                f.readinto(header)
+                return header.original_hash
 
     def _load_header(self, zip_archive):
         """
@@ -515,6 +560,9 @@ class TraceFile(object):
             self.masks = array.array('I')
             self.masks.fromfile(f, header.mask_num)
             self.mask_sizes = [number_of_bits_set(mask) * self.arch.POINTER_SIZE for mask in self.masks]
+
+            # source file hash
+            self.original_hash = header.original_hash
 
     def _load_segments(self, zip_archive):
         """
@@ -554,6 +602,9 @@ class TraceFile(object):
         # TODO: detect arch based on reg / lines in file
         #if not self.arch:
         #   self._select_arch(0)
+
+        # hash (CRC32) the source / text filepath before loading it
+        self.original_hash = hash_file(filepath)
 
         # load / parse a text trace into trace segments
         with open(filepath, 'r') as f:
@@ -1192,6 +1243,9 @@ class TraceSegment(object):
         self.base_idx = info.base_idx
         self.length = info.length
 
+        if info.ip_num == 0:
+            raise ValueError("Empty trace file (ip_num == 0)")
+
         ip_itemsize = info.ip_length // info.ip_num
         ip_type = type_from_width(ip_itemsize)
 
@@ -1499,7 +1553,6 @@ class TraceSegment(object):
 
                 address, hex_data = value.split(":")
                 address = int(address, 16)
-
                 hex_data = bytes(hex_data.strip(), 'utf-8')
                 data = binascii.unhexlify(hex_data)
 
