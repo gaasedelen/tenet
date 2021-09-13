@@ -132,6 +132,7 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
         self._action_copy_value = QtWidgets.QAction("Copy value", None)
         self._action_follow_in_dump = QtWidgets.QAction("Follow in dump", None)
         self._action_follow_in_disassembly = QtWidgets.QAction("Follow in disassembler", None)
+        self._action_clear = QtWidgets.QAction("Clear code breakpoints", None)
 
         # install the right click context menu
         self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
@@ -191,38 +192,44 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
         """
         Handle a right click event (populate/show context menu).
         """
-
-        # if no register was right clicked, there's no reason to show a menu
-        reg_name = self._pos_to_reg(position)
-        if not reg_name:
-            return
-
-        #
-        # fetch the disassembler context and register value as we may use them
-        # based on the user's context, or the action they select
-        #
-
-        dctx = disassembler[self.controller.pctx]
-        reg_value = self.model.registers[reg_name]
-
-        #
-        # dynamically populate the right click context menu
-        #
-
         menu = QtWidgets.QMenu()
-        menu.addAction(self._action_copy_value)
-        menu.addAction(self._action_follow_in_dump)
+
+        # if a register was right clicked, fetch its name
+        reg_name = self._pos_to_reg(position)
+        if reg_name:
+
+            #
+            # fetch the disassembler context and register value as we may use them
+            # based on the user's context, or the action they select
+            #
+
+            dctx = disassembler[self.controller.pctx]
+            reg_value = self.model.registers[reg_name]
+
+            #
+            # dynamically populate the right click context menu
+            #
+
+            menu.addAction(self._action_copy_value)
+            menu.addAction(self._action_follow_in_dump)
+
+            #
+            # if the register conatins a value that falls within the database,
+            # we want to show it and ensure it's active
+            #
+
+            menu.addAction(self._action_follow_in_disassembly)
+            if dctx.is_mapped(reg_value):
+                self._action_follow_in_disassembly.setEnabled(True)
+            else:
+                self._action_follow_in_disassembly.setEnabled(False)
 
         #
-        # if the register conatins a value that falls within the database,
-        # we want to show it and ensure it's active
+        # add a menu option to clear exection breakpoints if there is an
+        # active execution breakpoint set somewhere
         #
 
-        menu.addAction(self._action_follow_in_disassembly)
-        if dctx.is_mapped(reg_value):
-            self._action_follow_in_disassembly.setEnabled(True)
-        else:
-            self._action_follow_in_disassembly.setEnabled(False)
+        menu.addAction(self._action_clear)
 
         #
         # show the right click menu and wait for the user to selection an
@@ -241,6 +248,8 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
             dctx.navigate(reg_value)
         elif action == self._action_follow_in_dump:
             self.controller.follow_in_dump(reg_name)
+        elif action == self._action_clear:
+            self.pctx.breakpoints.clear_execution_breakpoints()
 
     def refresh(self):
         self.viewport().update()
@@ -339,8 +348,16 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
         # handle duoble (left) click events
         if event.button() == QtCore.Qt.LeftButton:
 
+            # confirm that we are consuming the double click event
+            event.accept()
+
             # check if the user clicked a known field
             field = self._pos_to_field(mouse_position)
+
+            # if the double click was *not* on a register field, clear execution breakpoints
+            if not field:
+                self.pctx.breakpoints.clear_execution_breakpoints()
+                return
 
             # ignore if the double clicked field (register) was not the IP reg
             if not (field and field.name == self.model.arch.IP):
@@ -352,9 +369,6 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
 
             # the user double clicked IP, so set a breakpoint on it
             self.controller.set_ip_breakpoint()
-
-            # swallow the event
-            event.accept()
 
     def mousePressEvent(self, event):
         """

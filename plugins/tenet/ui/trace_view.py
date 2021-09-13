@@ -1278,6 +1278,8 @@ class TraceView(QtWidgets.QWidget):
         self._menu = QtWidgets.QMenu()
 
         # create actions to show in the context menu
+        self._action_clear = self._menu.addAction("Clear all breakpoints")
+        self._menu.addSeparator()
         self._action_load = self._menu.addAction("Load new trace")
         self._action_close = self._menu.addAction("Close trace")
 
@@ -1298,6 +1300,8 @@ class TraceView(QtWidgets.QWidget):
             self.pctx.interactive_load_trace(True)
         elif action == self._action_close:
             self.pctx.close_trace()
+        elif action == self._action_clear:
+            self.pctx.breakpoints.clear_breakpoints()
 
     def update_from_model(self):
         for bar in self.model.tracebars.values()[::-1]:

@@ -94,6 +94,16 @@ class BreakpointController(object):
         self.model.bp_access[address] = TraceBreakpoint(address, BreakpointType.ACCESS, length)
         self.model._notify_breakpoints_changed()
 
+    def clear_breakpoints(self):
+        """
+        Clear all breakpoints.
+        """
+        self.model.bp_exec = {}
+        self.model.bp_read = {}
+        self.model.bp_write = {}
+        self.model.bp_access = {}
+        self.model._notify_breakpoints_changed()
+
     def clear_execution_breakpoints(self):
         """
         Clear all execution breakpoints.

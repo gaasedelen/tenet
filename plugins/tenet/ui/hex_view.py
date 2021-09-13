@@ -60,7 +60,7 @@ class HexView(QtWidgets.QAbstractScrollArea):
 
         # create actions to show in the context menu
         self._action_copy = QtWidgets.QAction("Copy", None)
-        self._action_clear = QtWidgets.QAction("Clear breakpoints", None)
+        self._action_clear = QtWidgets.QAction("Clear mem breakpoints", None)
         self._action_follow_in_dump = QtWidgets.QAction("Follow in dump", None)
 
         bp_types = \
@@ -419,10 +419,9 @@ class HexView(QtWidgets.QAbstractScrollArea):
             for submenu, _ in self._goto_menus:
                 menu.addMenu(submenu)
 
-        # if there are *ANY* active memory breakpoints, show the 'clear breakpoints' action
-        if next(self.model.memory_breakpoints, None):
-            menu.addSeparator()
-            menu.addAction(self._action_clear)
+        # show the 'clear breakpoints' action
+        menu.addSeparator()
+        menu.addAction(self._action_clear)
 
         #
         # show the right click context menu
