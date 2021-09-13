@@ -117,6 +117,9 @@ class IDACoreAPI(DisassemblerCoreAPI):
     def get_disassembler_user_directory(self):
         return ida_diskio.get_user_idadir()
 
+    def refresh_views(self):
+        ida_kernwin.refresh_idaview_anyway()
+
     def get_disassembly_background_color(self):
         """
         Get the background color of the IDA disassembly view.

@@ -343,7 +343,36 @@ class TenetContext(object):
 
         This will make the disassembler track with the PC/IP of the trace reader. 
         """
-        disassembler[self].navigate(self.reader.rebased_ip)
+        dctx = disassembler[self]
+
+        #
+        # get a 'rebased' version of the current instruction pointer, which
+        # should map to the disassembler / open database if it is a code
+        # address that is known
+        #
+
+        bin_address = self.reader.rebased_ip
+
+        #
+        # if the code address is in a library / other unknown area that
+        # cannot be renedered by the disassembler, then resolve the last
+        # known trace 'address' within the database
+        #
+
+        if not dctx.is_mapped(bin_address):
+            last_good_idx = self.reader.analysis.get_prev_mapped_idx(idx)
+            if last_good_idx == -1:
+                return # navigation is just not gonna happen...
+
+            # fetch the last instruction pointer to fall within the trace
+            last_good_trace_address = self.reader.get_ip(last_good_idx)
+
+            # convert the trace-based instruction pointer to one that maps to the disassembler
+            bin_address = self.reader.analysis.rebase_pointer(last_good_trace_address)
+
+        # navigate the disassembler to a 'suitable' address based on the trace idx
+        dctx.navigate(bin_address)
+        disassembler.refresh_views()
 
     def _select_trace_file(self):
         """

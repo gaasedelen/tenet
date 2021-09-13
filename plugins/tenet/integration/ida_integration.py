@@ -6,6 +6,7 @@ import logging
 #
 
 import ida_dbg
+import ida_bytes
 import ida_idaapi
 import ida_kernwin
 
@@ -443,6 +444,17 @@ class TenetIDA(TenetCore):
                 rebased_address = ctx.reader.analysis.rebase_pointer(address)
                 trail[rebased_address] = ida_color
 
+        current_address = ctx.reader.rebased_ip
+        if not ida_bytes.is_mapped(current_address):
+            last_good_idx = ctx.reader.analysis.get_prev_mapped_idx(ctx.reader.idx)
+            if last_good_idx != -1:
+
+                # fetch the last instruction pointer to fall within the trace
+                last_good_trace_address = ctx.reader.get_ip(last_good_idx)
+
+                # convert the trace-based instruction pointer to one that maps to the disassembler
+                current_address = ctx.reader.analysis.rebase_pointer(last_good_trace_address)
+
         for section in lines_in.sections_lines:
             for line in section:
                 address = line.at.toea()
@@ -451,7 +463,7 @@ class TenetIDA(TenetCore):
                     color = backward_trail[address]
                 elif address in forward_trail:
                     color = forward_trail[address]
-                elif address == ctx.reader.rebased_ip:
+                elif address == current_address:
                     color = current_color
                 else:
                     continue
