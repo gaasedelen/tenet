@@ -18,7 +18,7 @@ logger = logging.getLogger("Plugin.UI.Palette")
 
 class PluginPalette(object):
     """
-    Color Palette for the plugin.
+    Theme palette for the plugin.
     """
 
     def __init__(self):
@@ -49,8 +49,8 @@ class PluginPalette(object):
         # initialize the user theme directory
         self._populate_user_theme_dir()
 
-        # load a placeholder theme (unhinted) for inital Tenet bring-up
-        self._load_preferred_theme(True)
+        # load a placeholder theme for inital Tenet bring-up
+        self._load_default_theme()
         self._initialized = False
 
     @staticmethod
@@ -100,48 +100,27 @@ class PluginPalette(object):
 
         logger.debug("Warming up theme subsystem...")
 
-        #
-        # attempt to load the user's preferred (or hinted) theme. if we are
-        # successful, then there's nothing else to do!
-        #
-
-        self._refresh_theme_hints()
+        # attempt to load the user's preferred theme
         if self._load_preferred_theme():
             self._initialized = True
-            logger.debug(" - warmup complete, using preferred theme!")
+            logger.debug(" - warmup complete, using user theme!")
             return
 
         #
-        # failed to load the preferred theme... so delete the 'active'
-        # file (if there is one) and warn the user before falling back
+        # if no user selected theme is loaded, we will attempt to detect
+        # and load the in-box themes based on the disassembler theme
         #
 
-        try:
-            os.remove(os.path.join(self.get_user_theme_dir(), ".active_theme"))
-        except:
-            pass
-
-        disassembler.warning(
-            "Failed to load plugin user theme!\n\n"
-            "Please check the console for more information..."
-        )
-
-        #
-        # if no theme is loaded, we will attempt to detect & load the in-box
-        # themes based on the user's disassembler theme
-        #
-
-        loaded = self._load_preferred_theme(fallback=True)
-        if not loaded:
-            pmsg("Could not load plugin fallback theme!") # this is a bad place to be...
+        if self._load_hinted_theme():
+            logger.debug(" - warmup complete, using hint-recommended theme!")
+            self._initialized = True
             return
 
-        logger.debug(" - warmup complete, using hint-recommended theme!")
-        self._initialized = True
+        pmsg("Could not warmup theme subsystem!")
 
     def interactive_change_theme(self):
         """
-        Open a file dialog and let the user select a new Lighthoue theme.
+        Open a file dialog and let the user select a new plugin theme.
         """
 
         # create & configure a Qt File Dialog for immediate use
@@ -182,7 +161,7 @@ class PluginPalette(object):
         logger.debug("Captured filename from theme file dialog: '%s'" % filename)
 
         #
-        # before applying the selected lighthouse theme, we should ensure that
+        # before applying the selected plugin theme, we should ensure that
         # we know if the user is using a light or dark disassembler theme as
         # it may change which colors get used by the plugin theme
         #
@@ -208,8 +187,11 @@ class PluginPalette(object):
         Depending on if the disassembler is using a dark or light theme, we
         *try* to select colors that will hopefully keep things most readable.
         """
-        self._refresh_theme_hints()
-        self._load_preferred_theme()
+        if self._load_preferred_theme():
+            return
+        if self._load_hinted_theme():
+            return
+        pmsg("Failed to refresh theme!")
 
     def gen_arrow_icon(self, color, rotation):
         """
@@ -300,9 +282,50 @@ class PluginPalette(object):
 
         self._required_fields = theme["fields"].keys()
 
-    def _load_preferred_theme(self, fallback=False):
+    def _load_default_theme(self):
         """
-        Load the user's preferred theme, or the one hinted at by the theme subsystem.
+        Load the default theme without any sort of hinting.
+        """
+        theme_name = self._default_themes["dark"]
+        theme_path = os.path.join(self.get_plugin_theme_dir(), theme_name)
+        return self._load_theme(theme_path)
+
+    def _load_hinted_theme(self):
+        """
+        Load the in-box plugin theme hinted at by the theme subsystem.
+        """
+        self._refresh_theme_hints()
+
+        #
+        # we have two themes hints which roughly correspond to the tone of
+        # the user's disassembly background, and then the Qt subsystem.
+        #
+        # if both themes seem to align on style (eg the user is using a
+        # 'dark' UI), then we will select the appropriate in-box theme
+        #
+
+        if self._user_qt_hint == self._user_disassembly_hint:
+            theme_name = self._default_themes[self._user_qt_hint]
+            logger.debug(" - No preferred theme, hints suggest theme '%s'" % theme_name)
+
+        #
+        # the UI hints don't match, so the user is using some ... weird
+        # mismatched theming in their disassembler. let's just default to
+        # the 'dark' plugin theme as it is more robust
+        #
+
+        else:
+            theme_name = self._default_themes["dark"]
+
+        # build the filepath to the hinted, in-box theme
+        theme_path = os.path.join(self.get_plugin_theme_dir(), theme_name)
+
+        # attempt to load and return the result of loading an in-box theme
+        return self._load_theme(theme_path)
+
+    def _load_preferred_theme(self):
+        """
+        Load the user's saved, preferred theme.
         """
         logger.debug("Loading preferred theme from disk...")
         user_theme_dir = self.get_user_theme_dir()
@@ -313,49 +336,31 @@ class PluginPalette(object):
             theme_name = open(active_filepath).read().strip()
             logger.debug(" - Got '%s' from .active_theme" % theme_name)
         except (OSError, IOError):
-            theme_name = None
+            return False
 
-        #
-        # if the user does not have a preferred theme set yet, we will try to
-        # pick one for them based on their disassembler UI.
-        #
-
-        if not theme_name:
-
-            #
-            # we have two themes hints which roughly correspond to the tone of
-            # their disassembly background, and then their general Qt widgets.
-            #
-            # if both themes seem to align on style (eg the user is using a
-            # 'dark' UI), then we will select the appropriate in-box theme
-            #
-
-            if self._user_qt_hint == self._user_disassembly_hint:
-                theme_name = self._default_themes[self._user_qt_hint]
-                logger.debug(" - No preferred theme, hints suggest theme '%s'" % theme_name)
-
-            #
-            # the UI hints don't match, so the user is using some ... weird
-            # mismatched theming in their disassembler. let's just default to
-            # the 'dark' plugin theme as it is more robust
-            #
-
-            else:
-                theme_name = self._default_themes["dark"]
-
-        #
-        # should the user themes be in a bad state, we can fallback to the
-        # in-box themes. this should only happen if users malform the default
-        # themes that have been copied into the user theme directory
-        #
-
-        if fallback or is_plugin_dev():
-            theme_path = os.path.join(self.get_plugin_theme_dir(), theme_name)
-        else:
-            theme_path = os.path.join(self.get_user_theme_dir(), theme_name)
+        # build the filepath to the user defined theme
+        theme_path = os.path.join(self.get_user_theme_dir(), theme_name)
 
         # finally, attempt to load & apply the theme -- return True/False
-        return self._load_theme(theme_path)
+        if self._load_theme(theme_path):
+            return True
+
+        #
+        # failed to load the preferred theme... so delete the 'active'
+        # file (if there is one) and warn the user before falling back
+        #
+
+        try:
+            os.remove(os.path.join(self.get_user_theme_dir(), ".active_theme"))
+        except:
+            pass
+
+        disassembler.warning(
+            "Failed to load plugin user theme!\n\n"
+            "Please check the console for more information..."
+        )
+
+        return False
 
     def _validate_theme(self, theme):
         """
@@ -398,6 +403,7 @@ class PluginPalette(object):
 
         # do some basic sanity checking on the given theme file
         if not self._validate_theme(theme):
+            pmsg("Failed to validate theme '%s'" % filepath)
             return False
 
         # try applying the loaded theme to the plugin
