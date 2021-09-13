@@ -156,7 +156,20 @@ class TenetContext(object):
         #
 
         self.reader = TraceReader(filepath, self.arch, disassembler[self])
-        pmsg(f"Loaded trace of {self.reader.trace.length:,} instructions...")
+        pmsg(f"Loaded trace {self.reader.trace.filepath}")
+        pmsg(f"- {self.reader.trace.length:,} instructions...")
+
+        if self.reader.analysis.slide != None:
+            pmsg(f"- {self.reader.analysis.slide:08X} ASLR slide...")
+        else:
+            disassembler.warning("Failed to automatically detect ASLR base!\n\nSee console for more info...")
+            pmsg(" +------------------------------------------------------")
+            pmsg(" |- ERROR: Failed to detect ASLR base for this trace.")
+            pmsg(" |       ---------------------------------------     ")
+            pmsg(" +-+  You can 'try' rebasing the database to the correct ASLR base")
+            pmsg("   |  if you know it, and reload the trace. Otherwise, it is possible")
+            pmsg("   |  your trace is just... very small and Tenet was not confident")
+            pmsg("   |  predicting an ASLR slide.")
 
         #
         # we only hook directly into the disassembler / UI / subsytems once
