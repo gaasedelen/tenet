@@ -79,8 +79,7 @@ class TimestampLine(QtWidgets.QLineEdit):
         self.returnPressed.connect(self._evaluate)
 
     def _evaluate(self):
-        self.controller.navigate_to_expression(self.text())
-        return
+        self.controller.evaluate_expression(self.text())
 
 class RegisterArea(QtWidgets.QAbstractScrollArea):
     """

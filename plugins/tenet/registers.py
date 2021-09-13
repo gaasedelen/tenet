@@ -1,6 +1,6 @@
 from tenet.ui import *
 from tenet.util.misc import register_callback, notify_callback
-from tenet.integration.api import DockableWindow
+from tenet.integration.api import DockableWindow, disassembler
 
 #------------------------------------------------------------------------------
 # registers.py -- Register Controller
@@ -162,7 +162,7 @@ class RegisterController(object):
         """
         self.model.set_registers(registers, delta)
 
-    def navigate_to_expression(self, expression):
+    def evaluate_expression(self, expression):
         """
         Evaluate the expression in the IDX Shell and navigate to it.
         """
@@ -170,6 +170,7 @@ class RegisterController(object):
         # a target idx was given as an integer
         if isinstance(expression, int):
             target_idx = expression
+            self.reader.seek(target_idx)
 
         # string handling
         elif isinstance(expression, str):
@@ -180,21 +181,7 @@ class RegisterController(object):
 
             # a 'command' / alias idx was entered into the shell ('!...' prefix)
             if expression[0] == '!':
-
-                #
-                # for now, we only support 'one' command which is going to
-                # let you seek to a position in the trace by percentage
-                #
-                #    eg: !0, or !100 to skip to the start/end of trace
-                #
-
-                try:
-                    target_percent = float(expression[1:])
-                except:
-                    return
-
-                # seek to the desired percentage
-                self.reader.seek_percent(target_percent)
+                self._handle_command(expression[1:])
                 return
 
             #
@@ -208,11 +195,72 @@ class RegisterController(object):
             except:
                 return
 
+            self.reader.seek(target_idx)
+
         else:
             raise ValueError(f"Unknown input expression type '{expression}'?!?")
 
-        # seek to the desired idx
-        self.reader.seek(target_idx)
+    def _handle_command(self, expression):
+        """
+        Handle the evaluation of commands on the timestamp shell.
+        """
+        if self._handle_seek_percent(expression):
+            return True
+        if self._handle_seek_last(expression):
+            return True
+        return False
+
+    def _handle_seek_percent(self, expression):
+        """
+        Handle a 'percentage-based' trace seek.
+
+            eg: !0, or !100 to skip to the start/end of trace
+        """
+        try:
+            target_percent = float(expression) # float, so you could even do 42.1%
+        except:
+            return False
+
+        # seek to the desired percentage in the trace
+        self.reader.seek_percent(target_percent)
+        return True
+
+    def _handle_seek_last(self, expression):
+        """
+        Handle a seek to the last mapped address.
+        """
+        if expression != 'last':
+            return False
+
+        last_idx = self.reader.trace.length - 1
+        last_ip = self.reader.get_ip(last_idx)
+        rebased_ip = self.reader.analysis.rebase_pointer(last_ip)
+
+        dctx = disassembler[self.pctx]
+        if not dctx.is_mapped(rebased_ip):
+            last_good_idx = self.reader.analysis.get_prev_mapped_idx(last_idx)
+            if last_good_idx == -1:
+                return False # navigation is just not gonna happen...
+            last_idx = last_good_idx
+
+        # seek to the last known / good idx that is mapped within the disassembler
+        self.reader.seek(last_idx)
+        return True
+
+    def _idx_changed(self, idx):
+        """
+        The trace position has been changed.
+        """
+        self.model.idx = idx
+        self.set_registers(self.reader.registers, self.reader.trace.get_reg_delta(idx).keys())
+
+    def _breakpoints_changed(self):
+        """
+        Handle breakpoints changed event.
+        """
+        if not self.view:
+            return
+        self.view.refresh()
 
     def _idx_changed(self, idx):
         """
