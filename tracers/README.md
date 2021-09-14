@@ -7,8 +7,9 @@ Included within this repo are two tracers, with a third hosted out-of-repo. They
 * `/tracers/pin` -- An Intel Pin based tracer for Windows/Linux usermode applications
 * `/tracers/qemu` -- A QEMU based tracer to demo tracing the Xbox boot process on [XEMU](https://github.com/mborgerson/xemu)
 * [Tenet Tracer](https://github.com/AndrewFasano/tenet_tracer) -- A [PANDA](https://github.com/panda-re/panda) based tracer contributed by [Andrew Fasano](https://twitter.com/andrewfasano)
+* [what the fuzz](https://github.com/0vercl0k/wtf) -- A [powerful](https://blog.ret2.io/2021/07/21/wtf-snapshot-fuzzing/) snapshot-based fuzzer which can generate Tenet traces
 
-At this time, Tenet has mostly been used to explore traces that were generated from private snapshot based fuzzers. While these tracers are not public, snapshot fuzzer traces are perhaps the most immediate, real-world use case for this technology.
+At this time, Tenet has mostly been used to explore traces that were generated from snapshot-based fuzzers. These are perhaps the most immediate, real-world use case for this technology until additional investments are made to scale it further.
 
 ## Trace Format
 

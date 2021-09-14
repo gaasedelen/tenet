@@ -39,7 +39,6 @@ class StackController(HexController):
         """
         Follow the pointer at a given stack address in the memory dump.
         """
-        #print("STACK FOLLOW CLICKED WITH 0x%08X" % stack_address)
         POINTER_SIZE = self.pctx.reader.arch.POINTER_SIZE 
 
         # align the given stack address (which we will read..)
@@ -65,7 +64,6 @@ class StackController(HexController):
 
         # unpack the carved data as a pointer
         parsed_address = struct.unpack("I" if POINTER_SIZE == 4 else "Q", data)[0]
-        #print("PARSED ADDRESS: 0x%08X" % parsed_address)
         
         # navigate the memory dump window to the 'pointer' we carved off the stack
         self.pctx.memory.navigate(parsed_address)
@@ -78,15 +76,19 @@ class StackController(HexController):
         # fade out the upper part of the stack that is currently 'unallocated'
         self.set_fade_threshold(self.reader.sp)
 
-        #
-        # if the user has a byte / range selected ... we will *not* move
-        # the stack view on idx changes. this is to preserve the location
-        # of their selection on-screen (eg, when hovering a selected byte,
-        # and jumping between its memory accesses)
-        #
-
         if self.view:
-            if not (self.view._select_begin == self.view._select_end == -1):
+
+            #
+            # if the user has a byte / range selected or the view is purposely
+            # omitting navigation events, we will *not* move the stack view on
+            # idx changes.
+            #
+            # this is to preserve the location of their selection on-screen
+            # (eg, when hovering a selected byte, and jumping between its
+            # memory accesses)
+            #
+
+            if self.view._ignore_navigation or self.view.selection_size:
                 self.refresh_memory()
                 self.view.refresh()
                 return

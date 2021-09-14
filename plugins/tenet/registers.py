@@ -1,17 +1,16 @@
 from tenet.ui import *
-from tenet.types import BreakpointType
 from tenet.util.misc import register_callback, notify_callback
-from tenet.integration.api import DockableWindow
+from tenet.integration.api import DockableWindow, disassembler
 
 #------------------------------------------------------------------------------
 # registers.py -- Register Controller
 #------------------------------------------------------------------------------
 #
 #    The purpose of this file is to house the 'headless' components of the
-#    registers window and its underlying functionality. This is split into a 
-#    model and controller component, of a typical 'MVC' design pattern. 
+#    registers window and its underlying functionality. This is split into a
+#    model and controller component, of a typical 'MVC' design pattern.
 #
-#    NOTE: for the time being, this file also contains the logic for the 
+#    NOTE: for the time being, this file also contains the logic for the
 #    'IDX Shell' as it is kind of attached to the register view and not big
 #    enough to demand its own seperate structuring ... yet
 #
@@ -23,15 +22,16 @@ class RegisterController(object):
 
     def __init__(self, pctx):
         self.pctx = pctx
+        self.model = RegistersModel(pctx)
         self.reader = None
-        self.model = RegistersModel(self.pctx.arch)
 
         # UI components
         self.view = None
         self.dockable = None
 
-        # events 
-        pctx.breakpoints.model.focused_breakpoint_changed(self._focused_breakpoint_changed)
+        # signals
+        self._ignore_signals = False
+        pctx.breakpoints.model.breakpoints_changed(self._breakpoints_changed)
 
     def show(self, target=None, position=0):
         """
@@ -56,7 +56,7 @@ class RegisterController(object):
         new_dockable = DockableWindow("CPU Registers", self.view)
 
         #
-        # if there is a reference to a left over dockable window (e.g, from a 
+        # if there is a reference to a left over dockable window (e.g, from a
         # previous close of this window type) steal its dock positon so we can
         # hopefully take the same place as the old one
         #
@@ -83,7 +83,7 @@ class RegisterController(object):
         self.dockable.hide()
         self.view = None
         self.dockable = None
-    
+
     def attach_reader(self, reader):
         """
         Attach a trace reader to this controller.
@@ -108,20 +108,27 @@ class RegisterController(object):
         self.reader = None
         self.model.reset()
 
+    def set_ip_breakpoint(self):
+        """
+        Set an execution breakpoint on the current instruction pointer.
+        """
+        current_ip = self.model.registers[self.model.arch.IP]
+
+        self._ignore_signals = True
+        self.pctx.breakpoints.clear_execution_breakpoints()
+        self.pctx.breakpoints.add_execution_breakpoint(current_ip)
+        self._ignore_signals = False
+
+        if self.view:
+            self.view.refresh()
+
+    # TODO: maybe we can remove all these 'focus' funcs now?
     def focus_register_value(self, reg_name):
         """
         Focus a register value in the register view.
         """
-
-        # if the instruction pointer is selected, show its executions in the trace
-        if reg_name == self.model.arch.IP:
-            reg_value = self.model.registers[reg_name]
-            self.pctx.breakpoints.focus_breakpoint(reg_value, BreakpointType.EXEC)
-        else:
-            self.clear_register_focus()
-
         self.model.focused_reg_value = reg_name
-    
+
     def focus_register_name(self, reg_name):
         """
         Focus a register name in the register view.
@@ -147,10 +154,6 @@ class RegisterController(object):
         """
         Clear focus from the active register field.
         """
-        if self.model.focused_reg_value == self.model.arch.IP:
-            assert self.pctx.breakpoints.model.focused_breakpoint
-            assert self.pctx.breakpoints.model.focused_breakpoint.address == self.model.registers[self.model.arch.IP]
-            self.pctx.breakpoints.focus_breakpoint(None)
         self.model.focused_reg_value = None
 
     def set_registers(self, registers, delta=None):
@@ -159,7 +162,7 @@ class RegisterController(object):
         """
         self.model.set_registers(registers, delta)
 
-    def navigate_to_expression(self, expression):
+    def evaluate_expression(self, expression):
         """
         Evaluate the expression in the IDX Shell and navigate to it.
         """
@@ -167,6 +170,7 @@ class RegisterController(object):
         # a target idx was given as an integer
         if isinstance(expression, int):
             target_idx = expression
+            self.reader.seek(target_idx)
 
         # string handling
         elif isinstance(expression, str):
@@ -177,21 +181,7 @@ class RegisterController(object):
 
             # a 'command' / alias idx was entered into the shell ('!...' prefix)
             if expression[0] == '!':
-
-                #
-                # for now, we only support 'one' command which is going to
-                # let you seek to a position in the trace by percentage
-                #
-                #    eg: !0, or !100 to skip to the start/end of trace
-                #
-
-                try:
-                    target_percent = float(expression[1:])
-                except:
-                    return
-
-                # seek to the desired percentage
-                self.reader.seek_percent(target_percent)
+                self._handle_command(expression[1:])
                 return
 
             #
@@ -205,49 +195,86 @@ class RegisterController(object):
             except:
                 return
 
+            self.reader.seek(target_idx)
+
         else:
             raise ValueError(f"Unknown input expression type '{expression}'?!?")
 
-        # seek to the desired idx
-        self.reader.seek(target_idx)
+    def _handle_command(self, expression):
+        """
+        Handle the evaluation of commands on the timestamp shell.
+        """
+        if self._handle_seek_percent(expression):
+            return True
+        if self._handle_seek_last(expression):
+            return True
+        return False
+
+    def _handle_seek_percent(self, expression):
+        """
+        Handle a 'percentage-based' trace seek.
+
+            eg: !0, or !100 to skip to the start/end of trace
+        """
+        try:
+            target_percent = float(expression) # float, so you could even do 42.1%
+        except:
+            return False
+
+        # seek to the desired percentage in the trace
+        self.reader.seek_percent(target_percent)
+        return True
+
+    def _handle_seek_last(self, expression):
+        """
+        Handle a seek to the last mapped address.
+        """
+        if expression != 'last':
+            return False
+
+        last_idx = self.reader.trace.length - 1
+        last_ip = self.reader.get_ip(last_idx)
+        rebased_ip = self.reader.analysis.rebase_pointer(last_ip)
+
+        dctx = disassembler[self.pctx]
+        if not dctx.is_mapped(rebased_ip):
+            last_good_idx = self.reader.analysis.get_prev_mapped_idx(last_idx)
+            if last_good_idx == -1:
+                return False # navigation is just not gonna happen...
+            last_idx = last_good_idx
+
+        # seek to the last known / good idx that is mapped within the disassembler
+        self.reader.seek(last_idx)
+        return True
 
     def _idx_changed(self, idx):
         """
         The trace position has been changed.
         """
-        IP = self.model.arch.IP
-        target = self.pctx.breakpoints.model.focused_breakpoint
-        registers = self.pctx.reader.registers
-
-        if target and target.address == registers[IP]:
-            self.model.focused_reg_value = IP
-        else:
-            self.model.focused_reg_value = None
-
         self.model.idx = idx
         self.set_registers(self.reader.registers, self.reader.trace.get_reg_delta(idx).keys())
 
-    def _focused_breakpoint_changed(self, breakpoint):
+    def _breakpoints_changed(self):
         """
-        The focused breakpoint has changed.
+        Handle breakpoints changed event.
         """
         if not self.view:
             return
+        self.view.refresh()
 
-        if not (breakpoint and breakpoint.type == BreakpointType.EXEC):
-            self.model.focused_reg_value = None
-            self.view.refresh()
+    def _idx_changed(self, idx):
+        """
+        The trace position has been changed.
+        """
+        self.model.idx = idx
+        self.set_registers(self.reader.registers, self.reader.trace.get_reg_delta(idx).keys())
+
+    def _breakpoints_changed(self):
+        """
+        Handle breakpoints changed event.
+        """
+        if not self.view:
             return
-
-        IP = self.model.arch.IP
-        registers = self.pctx.reader.registers
-
-        if registers[IP] != breakpoint.address:
-            self.model.focused_reg_value = None
-            self.view.refresh()
-            return
-
-        self.model.focused_reg_value = IP
         self.view.refresh()
 
 class RegistersModel(object):
@@ -255,8 +282,8 @@ class RegistersModel(object):
     The Registers Model (Data)
     """
 
-    def __init__(self, arch):
-        self.arch = arch
+    def __init__(self, pctx):
+        self._pctx = pctx
         self.reset()
 
         #----------------------------------------------------------------------
@@ -265,17 +292,71 @@ class RegistersModel(object):
 
         self._registers_changed_callbacks = []
 
+    #----------------------------------------------------------------------
+    # Properties
+    #----------------------------------------------------------------------
+
+    @property
+    def arch(self):
+        """
+        Return the architecture definition.
+        """
+        return self._pctx.arch
+
+    @property
+    def execution_breakpoints(self):
+        """
+        Return the set of active execution breakpoints.
+        """
+        return self._pctx.breakpoints.model.bp_exec
+
+    #----------------------------------------------------------------------
+    # Public
+    #----------------------------------------------------------------------
+
     def reset(self):
+
+        # the current timestamp in the trace
         self.idx = -1
-        self.delta = []
+
+        # the { reg_name: reg_value } dict of current register values
         self.registers = {}
+
+        #
+        # the names of the registers that have changed since the previous
+        # chronological timestamp in the trace.
+        #
+        # for example if you singlestep forward, any registers that changed as
+        # a result of 'normal execution' may be highlighted (e.g. red)
+        #
+
+        self.delta_trace = []
+
+        #
+        # the names of registers that have changed since the last navigation
+        # event (eg, skipping between breakpoints, memory accesses).
+        #
+        # this is used to highlight registers that may not have changed as a
+        # result of the previous chronological trace event, but by means of
+        # user navigation within tenet.
+        #
+
+        self.delta_navigation = []
 
         self.focused_reg_name = None
         self.focused_reg_value = None
 
     def set_registers(self, registers, delta=None):
+
+        # compute which registers changed as a result of navigation
+        unchanged = dict(set(self.registers.items()) & set(registers.items()))
+        self.delta_navigation = set([k for k in registers if k not in unchanged])
+
+        # save the register delta that changed since the previous trace timestamp
+        self.delta_trace = delta if delta else []
         self.registers = registers
-        self.delta = delta if delta else []
+
+        # notify the UI / listeners of the model that an update occurred
         self._notify_registers_changed()
 
     #----------------------------------------------------------------------

@@ -17,6 +17,8 @@
 
 using std::ofstream;
 
+ofstream* g_log;
+
 #ifdef __i386__
 #define PC "eip"
 #else
@@ -30,7 +32,7 @@ using std::ofstream;
 static KNOB<std::string> KnobModuleWhitelist(KNOB_MODE_APPEND, "pintool", "w", "",
     "Add a module to the whitelist. If none is specified, every module is white-listed. Example: calc.exe");
 
-KNOB<std::string> KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool", "o", "trace", 
+KNOB<std::string> KnobOutputFilePrefix(KNOB_MODE_WRITEONCE, "pintool", "o", "trace", 
     "Prefix of the output file. If none is specified, 'trace' is used.");
 
 //
@@ -67,10 +69,10 @@ struct ThreadData
     ADDRINT mem_r2_addr;
     ADDRINT mem_r2_size;
 
-    char m_scratch[128];
-
     // Trace file for thread-specific trace modes
-    ofstream * m_trace;
+    ofstream* m_trace;
+
+    char m_scratch[512 * 2]; // fxsave has the biggest memory operand
 };
 
 //
@@ -126,12 +128,15 @@ static VOID OnThreadStart(THREADID tid, CONTEXT* ctxt, INT32 flags, VOID* v)
     // Create a new 'ThreadData' object and set it on the TLS.
     auto& context = *reinterpret_cast<ToolContext*>(v);
     auto data = new ThreadData;
+    memset(data, 0, sizeof(ThreadData));  
+
     data->m_trace = new ofstream;
     context.setThreadLocalData(tid, data);
 
     char filename[128] = {};
-    sprintf(filename, "%s.%u.log", KnobOutputFile.Value().c_str(), tid);
+    sprintf(filename, "%s.%u.log", KnobOutputFilePrefix.Value().c_str(), tid);
     data->m_trace->open(filename);
+    *data->m_trace << std::hex;
 
     // Save the recently created thread.
     PIN_GetLock(&context.m_thread_lock, 1);
@@ -168,7 +173,7 @@ static VOID OnImageLoad(IMG img, VOID* v)
     ADDRINT low = IMG_LowAddress(img);
     ADDRINT high = IMG_HighAddress(img);
 
-    printf("Loaded image: %p:%p -> %s\n", (void *)low, (void *)high, img_name.c_str());
+    *g_log << "Loaded image: 0x" << low << ":0x" << high << " -> " << img_name << std::endl;
 
     // Save the loaded image with its original full name/path.
     PIN_GetLock(&context.m_loaded_images_lock, 1);
@@ -227,12 +232,12 @@ VOID record_diff(const CONTEXT * cpu, ADDRINT pc, VOID* v)
             continue;
 
         // save the value for the new register to the log
-        *OutFile << REG_StringShort( (REG) reg) << "=0x" << std::hex << val << ",";
+        *OutFile << REG_StringShort( (REG) reg) << "=0x" << val << ",";
         data->m_cpu[reg] = val;
     }
 
     // always save pc to the log, for every unit of execution
-    *OutFile << PC << "=0x" << std::hex << pc;
+    *OutFile << PC << "=0x" << pc;
 
     //
     // dump memory reads / writes
@@ -243,10 +248,10 @@ VOID record_diff(const CONTEXT * cpu, ADDRINT pc, VOID* v)
         memset(data->m_scratch, 0, data->mem_r_size);
 
         PIN_SafeCopy(data->m_scratch, (const VOID *)data->mem_r_addr, data->mem_r_size);
-        *OutFile << ",mr=0x" << std::hex << data->mem_r_addr << ":";
+        *OutFile << ",mr=0x" << data->mem_r_addr << ":";
 
         for(UINT32 i = 0; i < data->mem_r_size; i++) {
-            *OutFile << std::setw(2) << std::setfill('0') << std::hex << ((unsigned char)data->m_scratch[i] & 0xff);
+            *OutFile << std::hex << std::setw(2) << std::setfill('0') << ((unsigned char)data->m_scratch[i] & 0xff);
         }
 
         data->mem_r_size = 0;
@@ -257,10 +262,10 @@ VOID record_diff(const CONTEXT * cpu, ADDRINT pc, VOID* v)
         memset(data->m_scratch, 0, data->mem_r2_size);
 
         PIN_SafeCopy(data->m_scratch, (const VOID *)data->mem_r2_addr, data->mem_r2_size);
-        *OutFile << ",mr=0x" << std::hex << data->mem_r2_addr << ":";
+        *OutFile << ",mr=0x" << data->mem_r2_addr << ":";
 
         for(UINT32 i = 0; i < data->mem_r2_size; i++) {
-            *OutFile << std::setw(2) << std::setfill('0') << std::hex << ((unsigned char)data->m_scratch[i] & 0xff);
+            *OutFile << std::hex << std::setw(2) << std::setfill('0') << ((unsigned char)data->m_scratch[i] & 0xff);
         }
 
         data->mem_r2_size = 0;
@@ -271,10 +276,10 @@ VOID record_diff(const CONTEXT * cpu, ADDRINT pc, VOID* v)
         memset(data->m_scratch, 0, data->mem_w_size);
         
         PIN_SafeCopy(data->m_scratch, (const VOID *)data->mem_w_addr, data->mem_w_size);
-        *OutFile << ",mw=0x" << std::hex << data->mem_w_addr << ":";
+        *OutFile << ",mw=0x" << data->mem_w_addr << ":";
 
         for(UINT32 i = 0; i < data->mem_w_size; i++) {
-            *OutFile << std::setw(2) << std::setfill('0') << std::hex << ((unsigned char)data->m_scratch[i] & 0xff);
+            *OutFile << std::hex << std::setw(2) << std::setfill('0') << ((unsigned char)data->m_scratch[i] & 0xff);
         }
 
         data->mem_w_size = 0;
@@ -378,6 +383,8 @@ static VOID Fini(INT32 code, VOID *v)
     for (const auto& data : context.m_terminated_threads) {
         data->m_trace->close();
     }
+
+    g_log->close();
 }
 
 int main(int argc, char * argv[]) {
@@ -390,13 +397,18 @@ int main(int argc, char * argv[]) {
         std::cerr << "Error initializing PIN, PIN_Init failed!" << std::endl;
         return -1;
     }
+
+    auto logFile = KnobOutputFilePrefix.Value() + ".log";
+    g_log = new ofstream;
+    g_log->open(logFile.c_str());
+    *g_log << std::hex;
     
     // Initialize the tool context
     ToolContext *context = new ToolContext();
     context->m_images = new ImageManager();
 
     for (unsigned i = 0; i < KnobModuleWhitelist.NumberOfValues(); ++i) {
-        std::cout << "White-listing image: " << KnobModuleWhitelist.Value(i) << std::endl;
+        *g_log << "White-listing image: " << KnobModuleWhitelist.Value(i) << '\n';
         context->m_images->addWhiteListedImage(KnobModuleWhitelist.Value(i));
         context->m_tracing_enabled = false;
     }

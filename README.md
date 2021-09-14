@@ -14,6 +14,7 @@ Special thanks to [QIRA](https://github.com/geohot/qira) / [geohot](https://twit
 
 ## Releases
 
+* v0.2 -- Imagebase detection, cell visualization, breakpoint refactor, bugfixes.
 * v0.1 -- Initial release
 
 # Installation
@@ -60,7 +61,7 @@ By *clicking and dragging across the timeline*, it is possible to zoom in on a s
 
 ## Execution Breakpoints
 
-Clicking the instruction pointer in the registers window will highlight it in red, revealing all the locations the instruction was executed across the trace timeline.
+Double clicking the instruction pointer in the registers window will highlight it in red, revealing all the locations the instruction was executed across the trace timeline.
 
 <p align="center">
 <img alt="Placing a breakpoint on the current instruction" src="screenshots/trace_breakpoints.gif"/>
@@ -78,13 +79,13 @@ IDA's native `F2` hotkey can also be used to set breakpoints on arbitrary instru
 
 ## Memory Breakpoints
 
-By clicking a byte in either the stack or memory views, you will instantly see all reads/writes to that address visualized across the trace timeline. Yellow indicates a memory *read*, blue indicates a memory *write*.
+By double clicking a byte in either the stack or memory views, you will instantly see all reads/writes to that address visualized across the trace timeline. Yellow indicates a memory *read*, blue indicates a memory *write*.
 
 <p align="center">
 <img alt="Exploring memory accesses using memory breakpoints" src="screenshots/memory_breakpoint.gif"/>
 </p>
 
-Memory breakpoints can be navigated using the same technique described for execution breakpoints. Click a byte, and *scroll while hovering the selected **byte*** to seek the trace to each of its accesses.
+Memory breakpoints can be navigated using the same technique described for execution breakpoints. Double click a byte, and *scroll while hovering the selected **byte*** to seek the trace to each of its accesses.
 
 *Right clicking a byte* of interest will give you options to seek between memory read / write / access if there is a specific navigation action that you have in mind.
 
@@ -96,7 +97,7 @@ To navigate the memory view to an arbitrary address, click onto the memory view 
 
 ## Region Breakpoints
 
-A rather experimental feature is setting access breakpoints for a region of memory. This is possible by highlighting a block of memory, and selecting the *Find accesses* action from the right click menu. 
+It is possible to set a memory breakpoint across a region of memory by highlighting a block of memory, and double clicking it to set an access breakpoint.
 
 <p align="center">
 <img alt="Memory region access breakpoints" src="screenshots/region_breakpoints.gif"/>
@@ -124,7 +125,7 @@ A simple 'shell' is provided to navigate to specific timestamps in the trace. Pa
 <img alt="Seeking around the trace using the timestamp shell" src="screenshots/idx_shell.gif"/>
 </p>
 
-Using an exclamation point, you can also seek a specified 'percentage' into the trace. Entering `!100` will seek to the final instruction in the trace, where `!50` will seek approximately 50% of the way through the trace.
+Using an exclamation point, you can also seek a specified 'percentage' into the trace. Entering `!100` will seek to the final instruction in the trace, where `!50` will seek approximately 50% of the way through the trace. `!last` will seek to the last navigable instruction that can be viewed in the disassembler.
 
 ## Themes
 

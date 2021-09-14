@@ -85,11 +85,10 @@ class TenetContext(object):
         """
 
         def test_load():
-            #filepath = R"C:\Users\user\Desktop\projects\tenet_dev\testcases\xbox\2bl.log"
-            filepath = R"C:\Users\user\Desktop\projects\tenet_dev\testcases\xbox\mcpx.log"
-            #filepath = R"C:\Users\user\Desktop\projects\tenet_dev\tenet\tracers\pin\boombox.log"
+            import ida_loader
+            trace_filepath = ida_loader.get_plugin_options("Tenet")
             focus_window()
-            self.load_trace(filepath)
+            self.load_trace(trace_filepath)
             self.show_ui()
 
         def dev_launch():
@@ -157,7 +156,20 @@ class TenetContext(object):
         #
 
         self.reader = TraceReader(filepath, self.arch, disassembler[self])
-        pmsg(f"Loaded trace of {self.reader.trace.length:,} instructions...")
+        pmsg(f"Loaded trace {self.reader.trace.filepath}")
+        pmsg(f"- {self.reader.trace.length:,} instructions...")
+
+        if self.reader.analysis.slide != None:
+            pmsg(f"- {self.reader.analysis.slide:08X} ASLR slide...")
+        else:
+            disassembler.warning("Failed to automatically detect ASLR base!\n\nSee console for more info...")
+            pmsg(" +------------------------------------------------------")
+            pmsg(" |- ERROR: Failed to detect ASLR base for this trace.")
+            pmsg(" |       ---------------------------------------     ")
+            pmsg(" +-+  You can 'try' rebasing the database to the correct ASLR base")
+            pmsg("   |  if you know it, and reload the trace. Otherwise, it is possible")
+            pmsg("   |  your trace is just... very small and Tenet was not confident")
+            pmsg("   |  predicting an ASLR slide.")
 
         #
         # we only hook directly into the disassembler / UI / subsytems once
@@ -245,6 +257,9 @@ class TenetContext(object):
         mw = get_qmainwindow()
         mw.addToolBar(QtCore.Qt.RightToolBarArea, self.trace)
         self.trace.show()
+
+        # trigger update check
+        self.core.check_for_update()
     
     #-------------------------------------------------------------------------
     # Integrated UI Event Handlers
@@ -295,7 +310,8 @@ class TenetContext(object):
         Handle UI actions for seeking to the next execution of the selected address.
         """
         address = disassembler[self].get_current_address()
-        result = self.reader.seek_to_next(address, BreakpointType.EXEC)
+        rebased_address = self.reader.analysis.rebase_pointer(address)
+        result = self.reader.seek_to_next(rebased_address, BreakpointType.EXEC)
 
         # TODO: blink screen? make failure more visible...
         if not result:
@@ -306,7 +322,8 @@ class TenetContext(object):
         Handle UI actions for seeking to the previous execution of the selected address.
         """
         address = disassembler[self].get_current_address()
-        result = self.reader.seek_to_prev(address, BreakpointType.EXEC)
+        rebased_address = self.reader.analysis.rebase_pointer(address)
+        result = self.reader.seek_to_prev(rebased_address, BreakpointType.EXEC)
 
         # TODO: blink screen? make failure more visible...
         if not result:
@@ -317,7 +334,8 @@ class TenetContext(object):
         Handle UI actions for seeking to the first execution of the selected address.
         """
         address = disassembler[self].get_current_address()
-        result = self.reader.seek_to_first(address, BreakpointType.EXEC)
+        rebased_address = self.reader.analysis.rebase_pointer(address)
+        result = self.reader.seek_to_first(rebased_address, BreakpointType.EXEC)
 
         # TODO: blink screen? make failure more visible...
         if not result:
@@ -328,7 +346,8 @@ class TenetContext(object):
         Handle UI actions for seeking to the final execution of the selected address.
         """
         address = disassembler[self].get_current_address()
-        result = self.reader.seek_to_final(address, BreakpointType.EXEC)
+        rebased_address = self.reader.analysis.rebase_pointer(address)
+        result = self.reader.seek_to_final(rebased_address, BreakpointType.EXEC)
 
         # TODO: blink screen? make failure more visible...
         if not result:
@@ -340,7 +359,36 @@ class TenetContext(object):
 
         This will make the disassembler track with the PC/IP of the trace reader. 
         """
-        disassembler[self].navigate(self.reader.ip)
+        dctx = disassembler[self]
+
+        #
+        # get a 'rebased' version of the current instruction pointer, which
+        # should map to the disassembler / open database if it is a code
+        # address that is known
+        #
+
+        bin_address = self.reader.rebased_ip
+
+        #
+        # if the code address is in a library / other unknown area that
+        # cannot be renedered by the disassembler, then resolve the last
+        # known trace 'address' within the database
+        #
+
+        if not dctx.is_mapped(bin_address):
+            last_good_idx = self.reader.analysis.get_prev_mapped_idx(idx)
+            if last_good_idx == -1:
+                return # navigation is just not gonna happen...
+
+            # fetch the last instruction pointer to fall within the trace
+            last_good_trace_address = self.reader.get_ip(last_good_idx)
+
+            # convert the trace-based instruction pointer to one that maps to the disassembler
+            bin_address = self.reader.analysis.rebase_pointer(last_good_trace_address)
+
+        # navigate the disassembler to a 'suitable' address based on the trace idx
+        dctx.navigate(bin_address)
+        disassembler.refresh_views()
 
     def _select_trace_file(self):
         """

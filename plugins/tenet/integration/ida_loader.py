@@ -99,7 +99,7 @@ class TenetIDAPlugin(ida_idaapi.plugin_t):
             logger.exception("Failed to cleanly unload Tenet from IDA.")
 
         end = time.time()
-        print("-"*50)
+        logger.debug("-"*50)
 
         logger.debug("IDA term done... (%.3f seconds...)" % (end-start))
 

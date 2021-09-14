@@ -21,6 +21,7 @@ import ida_bytes
 import ida_idaapi
 import ida_diskio
 import ida_kernwin
+import ida_segment
 
 from .api import DisassemblerCoreAPI, DisassemblerContextAPI
 from ...util.qt import *
@@ -116,6 +117,9 @@ class IDACoreAPI(DisassemblerCoreAPI):
     def get_disassembler_user_directory(self):
         return ida_diskio.get_user_idadir()
 
+    def refresh_views(self):
+        ida_kernwin.refresh_idaview_anyway()
+
     def get_disassembly_background_color(self):
         """
         Get the background color of the IDA disassembly view.
@@ -203,6 +207,33 @@ class IDAContextAPI(DisassemblerContextAPI):
         if ida_ua.decode_insn(insn, address) and ida_idp.is_call_insn(insn):
             return True
         return False
+
+    def get_instruction_addresses(self):
+        """
+        Return all instruction addresses from the executable.
+        """
+        instruction_addresses = []
+
+        for seg_address in idautils.Segments():
+
+            # fetch code segments
+            seg = ida_segment.getseg(seg_address)
+            if seg.sclass != ida_segment.SEG_CODE:
+                continue
+
+            current_address = seg_address
+            end_address = seg.end_ea
+
+            # save the address of each instruction in the segment
+            while current_address < end_address:
+                current_address = ida_bytes.next_head(current_address, end_address)
+                if ida_bytes.is_code(ida_bytes.get_flags(current_address)):
+                    instruction_addresses.append(current_address)
+
+        #    print(f"Seg {seg.start_ea:08X} --> {seg.end_ea:08X} CODE")
+        #print(f" -- {len(instruction_addresses):,} instructions found")
+
+        return instruction_addresses
 
     def is_mapped(self, address):
         return ida_bytes.is_mapped(address)
@@ -537,9 +568,7 @@ class DockableWindow(ida_kernwin.PluginForm):
 
 class IDADockSizeHack(QtCore.QObject):
     def eventFilter(self, obj, event):
-        #print("Got ", obj, event, event.type())
         if event.type() == QtCore.QEvent.WindowActivate:
-            #print("ALL DONE !")
             obj.setMinimumWidth(obj.min_width)
             obj.setMaximumWidth(obj.max_width)
             obj.removeEventFilter(self)

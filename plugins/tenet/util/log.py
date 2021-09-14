@@ -15,7 +15,7 @@ def pmsg(message):
     """
 
     # prefix the message
-    prefix_message = "[TENET] %s" % message
+    prefix_message = "[Tenet] %s" % message
 
     # only print to disassembler if its output window is alive
     if disassembler.is_msg_inited():
