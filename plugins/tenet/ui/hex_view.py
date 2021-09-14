@@ -881,8 +881,9 @@ class HexView(QtWidgets.QAbstractScrollArea):
 
             # set the text color for selected text
             if self.model.mask[byte_idx]:
-                if self.model.mask[byte_idx]:
-                    fg_color = self._palette.standard_selection_fg
+                fg_color = self._palette.standard_selection_fg
+            else:
+                fg_color = self._palette.standard_selection_faded_fg
 
         # a byte that was written
         elif byte_address in self.model.delta.mem_writes:
