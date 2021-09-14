@@ -1,5 +1,10 @@
 import logging
-import traceback
+
+from tenet.util.qt import *
+from tenet.util.misc import register_callback, notify_callback
+from tenet.integration.api import disassembler
+
+logger = logging.getLogger("Tenet.UI.TraceView")
 
 #
 # TODO: BIG DISCLAIMER -- The trace visualization / window does *not* make
@@ -11,13 +16,6 @@ import traceback
 #
 # this will probably happen sooner than later, to keep everything consistent
 #
-
-from tenet.types import BreakpointType
-from tenet.util.qt import *
-from tenet.util.misc import register_callback, notify_callback
-from tenet.integration.api import disassembler
-
-logger = logging.getLogger("Tenet.UI.TraceView")
 
 #------------------------------------------------------------------------------
 # TraceView
@@ -407,7 +405,7 @@ class TraceBar(QtWidgets.QWidget):
 
         # don't draw the trace vizualization as cells if the density is too high
         if given_space_per_cell < min_full_cell_height:
-            logger.debug(f"No need for cells -- {given_space_per_cell}, min req {min_full_cell_height}")
+            #logger.debug(f"No need for cells -- {given_space_per_cell}, min req {min_full_cell_height}")
             return
 
         # compute the pixel height of a cell at maximum height (including borders)
@@ -427,7 +425,7 @@ class TraceBar(QtWidgets.QWidget):
         self._cell_height  = max(self._cell_min_height, min(int(given_space_per_cell * 0.95), self._cell_max_height))
         self._cell_border  = max(self._cell_min_border, min(int(given_space_per_cell * 0.05), self._cell_max_border))
         self._cell_spacing = int(given_space_per_cell - (self._cell_height + self._cell_border * 2))
-        logger.debug(f"Dynamic cells -- Given: {given_space_per_cell}, Height {self._cell_height}, Border: {self._cell_border}, Spacing: {self._cell_spacing}")
+        #logger.debug(f"Dynamic cells -- Given: {given_space_per_cell}, Height {self._cell_height}, Border: {self._cell_border}, Spacing: {self._cell_spacing}")
 
         # if there's not enough to justify having spacing, use shared borders between cells (usually very small cells)
         if self._cell_spacing < self._cell_min_spacing:
@@ -438,7 +436,7 @@ class TraceBar(QtWidgets.QWidget):
 
         # compute how many cells we can *actually* show in the space available
         num_cell_allowed = int(viz_h / used_space_per_cell) + 1
-        logger.debug(f"Num Cells {num_cell} vs Available Space {num_cell_allowed}")
+        #logger.debug(f"Num Cells {num_cell} vs Available Space {num_cell_allowed}")
 
         self.end_idx = self.start_idx + num_cell_allowed
 
@@ -447,12 +445,12 @@ class TraceBar(QtWidgets.QWidget):
         Translate a given idx to its first Y coordinate.
         """
         if idx < self.start_idx or idx >= self.end_idx:
-            logger.warn(f"idx2pos failed (start: {self.start_idx:,} idx: {idx:,} end: {self.end_idx:,}")
+            #logger.warn(f"idx2pos failed (start: {self.start_idx:,} idx: {idx:,} end: {self.end_idx:,}")
             return INVALID_POS
 
         density = self.density
         if density == INVALID_DENSITY:
-            logger.warn(f"idx2pos failed (INVALID_DENSITY)")
+            #logger.warn(f"idx2pos failed (INVALID_DENSITY)")
             return INVALID_POS
 
         # convert the absolute idx to one that is 'relative' to the viz
@@ -508,7 +506,7 @@ class TraceBar(QtWidgets.QWidget):
 
         density = self.density
         if density == INVALID_DENSITY:
-            logger.warn(f"pos2idx failed (INVALID_DENSITY)")
+            #logger.warn(f"pos2idx failed (INVALID_DENSITY)")
             return INVALID_IDX
 
         # translate/rebase global y to viz relative y

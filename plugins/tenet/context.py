@@ -257,6 +257,9 @@ class TenetContext(object):
         mw = get_qmainwindow()
         mw.addToolBar(QtCore.Qt.RightToolBarArea, self.trace)
         self.trace.show()
+
+        # trigger update check
+        self.core.check_for_update()
     
     #-------------------------------------------------------------------------
     # Integrated UI Event Handlers

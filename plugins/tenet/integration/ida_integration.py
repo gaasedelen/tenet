@@ -419,7 +419,6 @@ class TenetIDA(TenetCore):
         step_over = False
         modifiers = QtGui.QGuiApplication.keyboardModifiers()
         step_over = bool(modifiers & QtCore.Qt.ShiftModifier)
-        #print("Stepping over?", step_over)
 
         forward_ips = ctx.reader.get_next_ips(trail_length, step_over)
         backward_ips = ctx.reader.get_prev_ips(trail_length, step_over)

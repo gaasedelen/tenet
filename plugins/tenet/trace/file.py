@@ -1745,20 +1745,3 @@ class TraceSegment(object):
             mask >>= 1
             bit_index += 1
         return regs
-
-#-----------------------------------------------------------------------------
-# Main
-#-----------------------------------------------------------------------------
-
-if __name__ == "__main__":
-    #filepath = R"C:\Users\user\Desktop\projects\tenet_dev\traces\wtf\143da869b34e7d895ed9548429e9103d.trace"
-    #filepath = R"C:\Users\user\Desktop\projects\tenet_dev\traces\wtf\crash-EXCEPTION_ACCESS_VIOLATION_EXECUTE-0x14106b008.trace"
-    #filepath = R"C:\Users\user\Desktop\projects\tenet_dev\testcases\xbox\mcpx.log"
-    #filepath = R"C:\Users\user\Desktop\projects\tenet_dev\testcases\xbox\2bl.log"
-    filepath = R"C:\Users\user\Desktop\projects\tenet_dev\tenet\tracers\pin\boombox.log"
-
-    start = time.time()
-    trace = TraceFile(filepath)
-    end = time.time()
-
-    print(f"Took {end-start:0.2f} seconds, trace length: {trace.length:,}")

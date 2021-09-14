@@ -2,6 +2,15 @@ import bisect
 import struct
 import logging
 
+from tenet.types import BreakpointType
+from tenet.util.log import pmsg
+from tenet.util.misc import register_callback, notify_callback
+from tenet.trace.file import TraceFile
+from tenet.trace.types import TraceMemory
+from tenet.trace.analysis import TraceAnalysis
+
+logger = logging.getLogger("Tenet.Trace.Reader")
+
 #-----------------------------------------------------------------------------
 # reader.py -- Trace Reader
 #-----------------------------------------------------------------------------
@@ -29,15 +38,6 @@ import logging
 #    navigate traces that span tens of billions (... maybe even hundreds of
 #    billions) of instructions.
 #
-
-from tenet.types import BreakpointType
-from tenet.util.log import pmsg
-from tenet.util.misc import register_callback, notify_callback
-from tenet.trace.file import TraceFile
-from tenet.trace.types import TraceMemory
-from tenet.trace.analysis import TraceAnalysis
-
-logger = logging.getLogger("Tenet.Trace.Reader")
 
 class TraceDelta(object):
     """
@@ -428,7 +428,7 @@ class TraceReader(object):
         assert resolution > 0
 
         resolution = max(1, resolution)
-        logger.debug(f"Fetching executions from {start_idx:,} --> {end_idx:,} (res {resolution:0.2f}, normalized {resolution:0.2f}) for address 0x{address:08X}")
+        #logger.debug(f"Fetching executions from {start_idx:,} --> {end_idx:,} (res {resolution:0.2f}, normalized {resolution:0.2f}) for address 0x{address:08X}")
 
         try:
             mapped_address = self.trace.get_mapped_ip(address)
@@ -447,7 +447,7 @@ class TraceReader(object):
 
             # clamp the segment end if it extends past our segment
             seg_end = min(seg_base + seg.length, end_idx)
-            logger.debug(f"Searching seg #{seg.id}, {seg_base:,} --> {seg_end:,}")
+            #logger.debug(f"Searching seg #{seg.id}, {seg_base:,} --> {seg_end:,}")
 
             # snip the segment to start from the given global idx
             relative_idx = idx - seg_base
@@ -478,7 +478,7 @@ class TraceReader(object):
 
                 seg_ips = seg.ips[idx-seg_base:]
 
-        logger.debug(f"Returning hits {output}")
+        #logger.debug(f"Returning hits {output}")
         return output
 
     def get_memory_accesses(self, address, resolution=1):
@@ -509,7 +509,7 @@ class TraceReader(object):
         assert resolution > 0
         resolution = max(1, resolution)
 
-        logger.debug(f"MEMORY ACCESSES @ 0x{address:08X} // {start_idx:,} --> {end_idx:,} (rez {resolution:0.2f})")
+        #logger.debug(f"MEMORY ACCESSES @ 0x{address:08X} // {start_idx:,} --> {end_idx:,} (rez {resolution:0.2f})")
 
         mapped_address = self.trace.get_mapped_address(address)
         if mapped_address == -1:
@@ -534,7 +534,7 @@ class TraceReader(object):
 
             # clamp the segment end if it extends past our segment
             seg_end = min(seg_base + seg.length, end_idx)
-            logger.debug(f"seg #{seg.id}, {seg.base_idx:,} --> {seg.base_idx+seg.length:,} -- IDX PTR {idx:,}")
+            #logger.debug(f"seg #{seg.id}, {seg.base_idx:,} --> {seg.base_idx+seg.length:,} -- IDX PTR {idx:,}")
 
             mem_sets = []
 
@@ -640,7 +640,7 @@ class TraceReader(object):
         assert resolution > 0
         resolution = max(1, resolution)
 
-        logger.debug(f"REGION ACCESS BETWEEN @ 0x{address:08X} + {length} //  {start_idx:,} --> {end_idx:,} (rez {resolution:0.2f})")
+        #logger.debug(f"REGION ACCESS BETWEEN @ 0x{address:08X} + {length} //  {start_idx:,} --> {end_idx:,} (rez {resolution:0.2f})")
 
         reads, writes = [], []
         targets = self._region_to_targets(address, length)
@@ -1167,7 +1167,7 @@ class TraceReader(object):
         if idx is None:
             idx = self.idx + 1
 
-        logger.debug(f"FIND NEXT REGION ACCESS FOR 0x{address:08X} -> 0x{address+length:08X} STARTING AT IDX {idx:,}")
+        #logger.debug(f"FIND NEXT REGION ACCESS FOR 0x{address:08X} -> 0x{address+length:08X} STARTING AT IDX {idx:,}")
 
         accesses, mem_sets = [], []
         targets = self._region_to_targets(address, length)
@@ -1287,7 +1287,7 @@ class TraceReader(object):
         if idx is None:
             idx = self.idx - 1
 
-        logger.debug(f"FIND PREV REGION ACCESS FOR 0x{address:08X} -> 0x{address+length:08X} STARTING AT IDX {idx:,}")
+        #logger.debug(f"FIND PREV REGION ACCESS FOR 0x{address:08X} -> 0x{address+length:08X} STARTING AT IDX {idx:,}")
 
         accesses, mem_sets = [], []
         targets = self._region_to_targets(address, length)

@@ -320,8 +320,6 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
         """
         Qt overload to capture mouse movement events.
         """
-        #print("HOVERING!", e.pos())
-
         point = e.pos()
         before = self._hovered_arrow
 
@@ -502,17 +500,14 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
         # the top point of the triangle
         top_x = rect.x() + (0 if index else rect.width())
         top_y = rect.y() + 1
-        #print("TOP", top_x, top_y)
 
         # bottom point of the triangle
         bottom_x = top_x
         bottom_y = top_y + size - 1
-        #print("BOT", bottom_x, bottom_y)
 
         # the 'tip' of the triangle pointing into towards the center of the trace
         tip_x = top_x + ((size // 2) * (1 if index else -1))
         tip_y = top_y + (size // 2)
-        #print("CURSOR", tip_x, tip_y)
 
         # start drawing from the 'top' of the triangle
         path.moveTo(top_x, top_y)

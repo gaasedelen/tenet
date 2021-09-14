@@ -249,8 +249,5 @@ class TraceAnalysis(object):
                 else:
                     last_good_idx = seg_base + relative_idx
 
-        #for idx in unmapped_entries:
-        #    print(f"Analysis: Unmapped @ IDX {idx:,}")
-
         #print(f" - Unmapped Entry Points: {len(unmapped_entries)}")
         self._unmapped_entry_points = unmapped_entries

@@ -39,7 +39,6 @@ class StackController(HexController):
         """
         Follow the pointer at a given stack address in the memory dump.
         """
-        #print("STACK FOLLOW CLICKED WITH 0x%08X" % stack_address)
         POINTER_SIZE = self.pctx.reader.arch.POINTER_SIZE 
 
         # align the given stack address (which we will read..)
@@ -65,7 +64,6 @@ class StackController(HexController):
 
         # unpack the carved data as a pointer
         parsed_address = struct.unpack("I" if POINTER_SIZE == 4 else "Q", data)[0]
-        #print("PARSED ADDRESS: 0x%08X" % parsed_address)
         
         # navigate the memory dump window to the 'pointer' we carved off the stack
         self.pctx.memory.navigate(parsed_address)

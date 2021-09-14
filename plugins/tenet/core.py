@@ -34,7 +34,7 @@ class TenetCore(object):
     #--------------------------------------------------------------------------
 
     PLUGIN_NAME    = "Tenet"
-    PLUGIN_VERSION = "0.1.0"
+    PLUGIN_VERSION = "0.2.0"
     PLUGIN_AUTHORS = "Markus Gaasedelen"
     PLUGIN_DATE    = "2021"
 
@@ -48,9 +48,6 @@ class TenetCore(object):
         """
         self.contexts = {}
         self._update_checked = False
-        
-        # print plugin banner
-        pmsg(f"Loading {self.PLUGIN_NAME} v{self.PLUGIN_VERSION} - (c) {self.PLUGIN_AUTHORS} - {self.PLUGIN_DATE}")
 
         # the plugin color palette
         self.palette = PluginPalette()
@@ -60,15 +57,16 @@ class TenetCore(object):
         self._install_ui()
 
         # all done, mark the core as loaded
-        logger.info("Successfully loaded plugin")
         self.loaded = True
+        
+        # print plugin banner
+        pmsg(f"Loaded v{self.PLUGIN_VERSION} - (c) {self.PLUGIN_AUTHORS} - {self.PLUGIN_DATE}")
+        logger.info("Successfully loaded plugin")
 
     def unload(self):
         """
         Unload the plugin, and remove any UI integrations.
         """
-
-        # if the core was never fully loaded, there's nothing else to do
         if not self.loaded:
             return
 
