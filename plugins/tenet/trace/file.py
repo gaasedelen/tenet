@@ -1206,23 +1206,18 @@ class TraceSegment(object):
         else:
             addrs, masks, offsets, data = self.read_addrs, self.read_masks, self.read_offsets, self.read_data
 
-        offset = offsets[mem_id] #sum([number_of_bits_set(mask) for mask in masks[:mem_id]])
-        #offset = sum([number_of_bits_set(mask) for mask in masks[:mem_id]])
-        length = number_of_bits_set(masks[mem_id])
-        raw_data = data[offset:offset+length]
+        src_mask = masks[mem_id]
+        src_offset = offsets[mem_id]
 
         address = self.trace.mem_addrs[addrs[mem_id]]
         output = TraceMemory(address, 8)
 
-        byte, i = 0, 0
-
-        while data_mask:
-            if data_mask & 1:
-                output.data[i] = raw_data[byte]
+        for i in range(8):
+            if (data_mask >> i) & 1:
+                output.data[i] = data[src_offset]
                 output.mask[i] = 0xFF
-                byte += 1
-            i += 1
-            data_mask >>= 1
+            if (src_mask >> i) & 1:
+                src_offset += 1
 
         #assert byte == length
 
