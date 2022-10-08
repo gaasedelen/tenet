@@ -163,7 +163,7 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
                 y += self._char_height
 
             name_rect = QtCore.QRect(0, 0, name_size.width(), name_size.height())
-            name_rect.moveBottomLeft(QtCore.QPoint(name_x, y))
+            name_rect.moveBottomLeft(QtCore.QPoint(int(name_x), int(y)))
 
             prev_rect = QtCore.QRect(0, 0, arrow_size, arrow_size)
             next_rect = QtCore.QRect(0, 0, arrow_size, arrow_size)
@@ -175,7 +175,7 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
 
             value_x = prev_x + prev_rect.width() + self._char_width
             value_rect = QtCore.QRect(0, 0, value_size.width(), value_size.height())
-            value_rect.moveBottomLeft(QtCore.QPoint(value_x, y))
+            value_rect.moveBottomLeft(QtCore.QPoint(int(value_x), int(y)))
 
             next_x = value_x + value_size.width() + self._char_width
             next_rect.moveCenter(name_rect.center())
