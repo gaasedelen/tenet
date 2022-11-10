@@ -208,3 +208,244 @@ class TenetBinja(TenetCore):
         pass
     def _uninstall_open_coverage_overview(self):
         pass
+
+
+    #--------------------------------------------------------------------------
+    # UI Event Handlers
+    #--------------------------------------------------------------------------
+
+    def _breakpoint_changed_hook(self, code, bpt):
+        # """
+        # (Event) Breakpoint changed.
+        # """
+
+        # if code == ida_dbg.BPTEV_ADDED:
+        #     self._notify_ui_breakpoint_changed(bpt.ea, BreakpointEvent.ADDED)
+
+        # elif code == ida_dbg.BPTEV_CHANGED:
+        #     if bpt.enabled():
+        #         self._notify_ui_breakpoint_changed(bpt.ea, BreakpointEvent.ENABLED)
+        #     else:
+        #         self._notify_ui_breakpoint_changed(bpt.ea, BreakpointEvent.DISABLED)
+
+        # elif code == ida_dbg.BPTEV_REMOVED:
+        #     self._notify_ui_breakpoint_changed(bpt.ea, BreakpointEvent.REMOVED)
+
+        return 0
+
+    def _popup_hook(self, widget, popup):
+        # """
+        # (Event) IDA is about to show a popup for the given TWidget.
+        # """
+
+        # # TODO: return if plugin/trace is not active
+        # pass
+
+        # # fetch the (IDA) window type (eg, disas, graph, hex ...)
+        # view_type = ida_kernwin.get_widget_type(widget)
+
+        # # only attach these context items to popups in disas views
+        # if view_type == ida_kernwin.BWN_DISASMS:
+
+        #     # prep for some shady hacks
+        #     p_qmenu = ctypes.cast(int(popup), ctypes.POINTER(ctypes.c_void_p))[0]
+        #     qmenu = sip.wrapinstance(int(p_qmenu), QtWidgets.QMenu)
+
+        #     #
+        #     # inject and organize the Tenet plugin actions
+        #     #
+
+        #     ida_kernwin.attach_action_to_popup(
+        #         widget,
+        #         popup,
+        #         self.ACTION_NEXT_EXECUTION,  # The action ID (see above)
+        #         "Rename",                    # Relative path of where to add the action
+        #         ida_kernwin.SETMENU_APP      # We want to append the action after ^
+        #     )
+
+        #     #
+        #     # this is part of our bodge to inject a plugin action submenu
+        #     # at a specific location in the QMenu, cuz I don't think it's
+        #     # actually possible with the native IDA API's (for groups...)
+        #     #
+
+        #     for action in qmenu.actions():
+        #         if action.text() == "Go to next execution":
+
+        #             # inject a group for the exta 'go to' actions
+        #             goto_submenu = QtWidgets.QMenu("Go to...")
+        #             qmenu.insertMenu(action, goto_submenu)
+
+        #             # hold a Qt ref of the submenu so it doesn't GC
+        #             self.__goto_submenu = goto_submenu
+        #             break
+
+        #     ida_kernwin.attach_action_to_popup(
+        #         widget,
+        #         popup,
+        #         self.ACTION_FIRST_EXECUTION,     # The action ID (see above)
+        #         "Go to.../",                     # Relative path of where to add the action
+        #         ida_kernwin.SETMENU_APP          # We want to append the action after ^
+        #     )
+
+        #     ida_kernwin.attach_action_to_popup(
+        #         widget,
+        #         popup,
+        #         self.ACTION_FINAL_EXECUTION,     # The action ID (see above)
+        #         "Go to.../",                     # Relative path of where to add the action
+        #         ida_kernwin.SETMENU_APP          # We want to append the action after ^
+        #     )
+
+        #     ida_kernwin.attach_action_to_popup(
+        #         widget,
+        #         popup,
+        #         self.ACTION_PREV_EXECUTION,  # The action ID (see above)
+        #         "Rename",                    # Relative path of where to add the action
+        #         ida_kernwin.SETMENU_APP      # We want to append the action after ^
+        #     )
+
+        #     #
+        #     # inject a seperator to help insulate our plugin action group
+        #     #
+
+        #     for action in qmenu.actions():
+        #         if action.text() == "Go to previous execution":
+        #             qmenu.insertSeparator(action)
+        #             break
+        pass
+
+    def _render_lines(self, lines_out, widget, lines_in):
+        # """
+        # (Event) IDA is about to render code viewer lines.
+        # """
+        # widget_type = ida_kernwin.get_widget_type(widget)
+
+        # if widget_type == ida_kernwin.BWN_DISASM:
+        #     self._highlight_disassesmbly(lines_out, widget, lines_in)
+
+        return
+
+    def _highlight_disassesmbly(self, lines_out, widget, lines_in):
+        # """
+        # TODO/XXX this is pretty gross
+        # """
+        # ctx = self.get_context(IDA_GLOBAL_CTX)
+        # if not ctx.reader:
+        #     return
+        
+        # trail_length = 6
+
+        # forward_color = self.palette.trail_forward
+        # current_color = self.palette.trail_current
+        # backward_color = self.palette.trail_backward
+
+        # r, g, b, _ = current_color.getRgb()
+        # current_color = 0xFF << 24 | b << 16 | g << 8 | r
+        
+        # step_over = False
+        # modifiers = QtGui.QGuiApplication.keyboardModifiers()
+        # step_over = bool(modifiers & QtCore.Qt.ShiftModifier)
+
+        # forward_ips = ctx.reader.get_next_ips(trail_length, step_over)
+        # backward_ips = ctx.reader.get_prev_ips(trail_length, step_over)
+
+        # backward_trail, forward_trail = {}, {}
+
+        # trails = [
+        #     (backward_ips, backward_trail, backward_color), 
+        #     (forward_ips, forward_trail, forward_color)
+        # ]
+
+        # for addresses, trail, color in trails:
+        #     for i, address in enumerate(addresses):
+        #         percent = 1.0 - ((trail_length - i) / trail_length)
+
+        #         # convert to bgr
+        #         r, g, b, _ = color.getRgb()
+        #         ida_color = b << 16 | g << 8 | r
+        #         ida_color |= (0xFF - int(0xFF * percent)) << 24
+
+        #         # save the trail color
+        #         rebased_address = ctx.reader.analysis.rebase_pointer(address)
+        #         trail[rebased_address] = ida_color
+
+        # current_address = ctx.reader.rebased_ip
+        # if not ida_bytes.is_mapped(current_address):
+        #     last_good_idx = ctx.reader.analysis.get_prev_mapped_idx(ctx.reader.idx)
+        #     if last_good_idx != -1:
+
+        #         # fetch the last instruction pointer to fall within the trace
+        #         last_good_trace_address = ctx.reader.get_ip(last_good_idx)
+
+        #         # convert the trace-based instruction pointer to one that maps to the disassembler
+        #         current_address = ctx.reader.analysis.rebase_pointer(last_good_trace_address)
+
+        # for section in lines_in.sections_lines:
+        #     for line in section:
+        #         address = line.at.toea()
+                
+        #         if address in backward_trail:
+        #             color = backward_trail[address]
+        #         elif address in forward_trail:
+        #             color = forward_trail[address]
+        #         elif address == current_address:
+        #             color = current_color
+        #         else:
+        #             continue
+
+        #         entry = ida_kernwin.line_rendering_output_entry_t(line, ida_kernwin.LROEF_FULL_LINE, color)
+        #         lines_out.entries.push_back(entry)
+        pass
+    #----------------------------------------------------------------------
+    # Callbacks
+    #----------------------------------------------------------------------
+
+    def ui_breakpoint_changed(self, callback):
+        # register_callback(self._ui_breakpoint_changed_callbacks, callback)
+        pass
+    def _notify_ui_breakpoint_changed(self, address, code):
+        # notify_callback(self._ui_breakpoint_changed_callbacks, address, code)
+        pass
+#------------------------------------------------------------------------------
+# IDA UI Helpers
+#------------------------------------------------------------------------------
+
+class BinjaCtxEntry():
+    """
+    A minimal context menu entry class to utilize IDA's action handlers.
+    """
+
+    def __init__(self, action_function):
+        super(BinjaCtxEntry, self).__init__()
+        self.action_function = action_function
+
+    def activate(self, ctx):
+        # """
+        # Execute the embedded action_function when this context menu is invoked.
+
+        # NOTE: We pass 'None' to the action function to act as the '
+        # """
+        # self.action_function(IDA_GLOBAL_CTX)
+        return 1
+
+    def update(self, ctx):
+        """
+        Ensure the context menu is always available in IDA.
+        """
+        return 1
+
+#------------------------------------------------------------------------------
+# IDA UI Event Hooks
+#------------------------------------------------------------------------------
+
+class DbgHooks():
+    def dbg_bpt_changed(self, code, bpt):
+        pass
+
+class UIHooks():
+    def get_lines_rendering_info(self, lines_out, widget, lines_in):
+        pass
+    def ready_to_run(self):
+        pass
+    def finish_populating_widget_popup(self, widget, popup):
+        pass

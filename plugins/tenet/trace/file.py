@@ -1237,7 +1237,9 @@ class TraceSegment(object):
         Load the trace segment from the given filestream.
         """
         info = SegmentInfo()
-        f.readinto(info)
+        num_bytes = f.readinto(info)
+        print(num_bytes)
+        print(info)
 
         self.id = info.id
         self.base_idx = info.base_idx

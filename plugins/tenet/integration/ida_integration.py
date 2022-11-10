@@ -470,6 +470,7 @@ class TenetIDA(TenetCore):
                 entry = ida_kernwin.line_rendering_output_entry_t(line, ida_kernwin.LROEF_FULL_LINE, color)
                 lines_out.entries.push_back(entry)
 
+
     #----------------------------------------------------------------------
     # Callbacks
     #----------------------------------------------------------------------
@@ -507,6 +508,7 @@ class IDACtxEntry(ida_kernwin.action_handler_t):
         Ensure the context menu is always available in IDA.
         """
         return ida_kernwin.AST_ENABLE_ALWAYS
+
 
 #------------------------------------------------------------------------------
 # IDA UI Event Hooks

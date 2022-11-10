@@ -1,0 +1,23 @@
+[Tenet] Loading trace
+[Tenet] LINE PARSE FAILED, line ~0, contents 'r0=0xb2fed790,r1=0xb2fedd58,r2=0x1127,r3=0x55ae08,r4=0x0,r5=0x58,r6=0x48,r7=0x55ae08,r8=0x1127,r9=0xb2fedd58,r10=0xb2fedda8,r11=0x4e9fa4,r12=0x40,sp=0xb2fed788,lr=0x1563d1,pc=0x153d6c,cpsr=0x60000030,mw=0xb2fed764:00000000,mw=0xb2fed768:58000000,mw=0xb2fed76c:48000000,mw=0xb2fed770:08ae5500,mw=0xb2fed774:27110000,mw=0xb2fed778:58ddfeb2,mw=0xb2fed77c:a8ddfeb2,mw=0xb2fed780:a49f4e00,mw=0xb2fed784:d1631500
+'
+[Tenet] Invalid line in text trace! 'r0=0xb2fed790,r1=0xb2fedd58,r2=0x1127,r3=0x55ae08,r4=0x0,r5=0x58,r6=0x48,r7=0x55ae08,r8=0x1127,r9=0xb2fedd58,r10=0xb2fedda8,r11=0x4e9fa4,r12=0x40,sp=0xb2fed788,lr=0x1563d1,pc=0x153d6c,cpsr=0x60000030,mw=0xb2fed764:00000000,mw=0xb2fed768:58000000,mw=0xb2fed76c:48000000,mw=0xb2fed770:08ae5500,mw=0xb2fed774:27110000,mw=0xb2fed778:58ddfeb2,mw=0xb2fed77c:a8ddfeb2,mw=0xb2fed780:a49f4e00,mw=0xb2fed784:d1631500
+' error on 'R0', (value '0xb2fed790')
+[Tenet] Failed to load trace...
+[Tenet] Traceback (most recent call last):
+  File "/home/etch/.binaryninja/plugins/tenet/context.py", line 285, in interactive_load_trace
+    self.load_trace(filepath)
+  File "/home/etch/.binaryninja/plugins/tenet/context.py", line 158, in load_trace
+    self.reader = TraceReader(filepath, self.arch, disassembler[self])
+  File "/home/etch/.binaryninja/plugins/tenet/trace/reader.py", line 64, in __init__
+    self.analysis = TraceAnalysis(self.trace, dctx)
+  File "/home/etch/.binaryninja/plugins/tenet/trace/analysis.py", line 33, in __init__
+    self._analyze()
+  File "/home/etch/.binaryninja/plugins/tenet/trace/analysis.py", line 70, in _analyze
+    self._analyze_aslr()
+  File "/home/etch/.binaryninja/plugins/tenet/trace/analysis.py", line 124, in _analyze_aslr
+    disas_low_address = instruction_addresses[0]
+IndexError: list index out of range
+
+
+Need to fix get_instruction_addresses

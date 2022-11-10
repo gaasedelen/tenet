@@ -170,6 +170,14 @@ class BinjaCoreAPI(DisassemblerCoreAPI):
         dock_handler = DockHandler.getActiveDockHandler()
         dock_handler.setVisible(dockable_name, False)
 
+    def show_registers(self, register_controller):
+        register_controller.show()
+    
+    def show_memory(self, memory_controller):
+        memory_controller.show()
+    
+    def show_stack(self, stack_controller):
+        stack_controller.show()
     #--------------------------------------------------------------------------
     # XXX Binja Specfic Helpers
     #--------------------------------------------------------------------------
@@ -297,34 +305,37 @@ class BinjaContextAPI(DisassemblerContextAPI):
     def is_64bit(self) -> bool:
         return self.bv.address_size & 8
 
+    def is_arm(self) -> bool:
+        arch = self.bv.arch.name.lower()
+        if 'thumb' in arch or 'arm' in arch:
+            return True
+        return False
+
     def is_call_insn(self, address):
         functions = binaryview.get_functions_containing(address)
         if functions[0].is_call_instruction(address):
             return True
         return False
 
+    #TODO make this faster...
     def get_instruction_addresses(self) -> list:
         """
         Return all instruction addresses from the executable.
         """
         instruction_addresses = []
-
-        # for section in binaryview.section:
-
-        #     # fetch executable segments
-        #     #! Dont know if binja can do "Code" segments
-        #     if not section.semantics.ReadOnlyCodeSectionSemantics:
-        #         continue
-
-        # Iterate through disassembly and check if is valid instruction
-        #* Probably a more efficient way to do this
-        disassembly_generator = binaryview.get_linear_disassembly()
-        for line in disassembly_generator:
-            if line.contents.il_instruction:
-                instruction_addresses.append(line.contents.address)
-
+        for name,section in self.bv.sections.items():
+            if not self.bv.is_offset_code_semantics(section.start):        
+                continue        
+            # Iterate through disassembly and check if is valid instruction        
+            current_address = 0    
+            cursor = self.bv.get_linear_disassembly_position_at(section.start)    
+            while current_address < section.end:        
+                lines = self.bv.get_next_linear_disassembly_lines(cursor)        
+                for line in lines:            
+                    if line.type == binaryninja.enums.LinearDisassemblyLineType.CodeDisassemblyLineType.value:                
+                        instruction_addresses.append(line.contents.address)            
+                    current_address = line.contents.address
         return instruction_addresses
-
     #! Not sure how binja will deal with heap addresses and stuff
     def is_mapped(self, address):
         mapped = False
@@ -333,6 +344,7 @@ class BinjaContextAPI(DisassemblerContextAPI):
                 mapped = True
                 break
         return mapped
+
 
     #TODO <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
     # def get_next_insn(self, address):
@@ -426,10 +438,10 @@ if QT_AVAILABLE:
         A dockable Qt widget for Binary Ninja.
         """
 
-        def __init__(self, parent, name):
+        def __init__(self, title, widget):
             super(DockableWidget, self).__init__()
-            QtWidgets.QWidget.__init__(self, parent)
-            DockContextHandler.__init__(self, self, name)
+            self.title = title
+            self.widget = widget
 
             self.actionHandler = UIActionHandler()
             self.actionHandler.setupActionHandler(self)
