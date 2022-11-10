@@ -3,8 +3,8 @@ import itertools
 from tenet.ui import *
 from tenet.types import BreakpointType, BreakpointEvent, TraceBreakpoint
 from tenet.util.misc import register_callback, notify_callback
-from tenet.integration.api import DockableWindow
-from tenet.integration.api import disassembler
+from tenet.util.disassembler import DockableWidget
+from tenet.util.disassembler import disassembler
 
 #------------------------------------------------------------------------------
 # breakpoints.py -- Breakpoint Controller
@@ -36,7 +36,7 @@ class BreakpointController(object):
         # UI components
         if QT_AVAILABLE:
             self.view = BreakpointView(self, self.model)
-            self.dockable = DockableWindow("Trace Breakpoints", self.view)
+            self.dockable = DockableWidget("Trace Breakpoints", self.view)
         else:
             self.view = None
             self.dockable = None

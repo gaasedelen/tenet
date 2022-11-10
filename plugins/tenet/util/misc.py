@@ -37,6 +37,30 @@ def is_mainthread():
     """
     return isinstance(threading.current_thread(), threading._MainThread)
 
+def is_mainthread():
+    """
+    Return a bool that indicates if this is the main application thread.
+    """
+    return isinstance(threading.current_thread(), threading._MainThread)
+
+def mainthread(f):
+    """
+    A debug decorator to ensure that a function is always called from the main thread.
+    """
+    def wrapper(*args, **kwargs):
+        assert is_mainthread()
+        return f(*args, **kwargs)
+    return wrapper
+
+def not_mainthread(f):
+    """
+    A debug decorator to ensure that a function is never called from the main thread.
+    """
+    def wrapper(*args, **kwargs):
+        assert not is_mainthread()
+        return f(*args, **kwargs)
+    return wrapper
+
 def assert_mainthread(f):
     """
     A sanity decorator to ensure that a function is always called from the main thread.
@@ -89,6 +113,26 @@ def swap_rgb(i):
     Swap a 32bit RRGGBB (integer) to BBGGRR.
     """
     return struct.unpack("<I", struct.pack(">I", i))[0] >> 8
+
+
+#------------------------------------------------------------------------------
+# Theme Util
+#------------------------------------------------------------------------------
+
+def swap_rgb(i):
+    """
+    Swap RRGGBB (integer) to BBGGRR.
+    """
+    return struct.unpack("<I", struct.pack(">I", i))[0] >> 8
+
+def test_color_brightness(color):
+    """
+    Test the brightness of a color.
+    """
+    if color.lightness() > 255.0/2:
+        return "light"
+    else:
+        return "dark"
 
 #------------------------------------------------------------------------------
 # Python Callback / Signals

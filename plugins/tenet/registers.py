@@ -1,6 +1,6 @@
 from tenet.ui import *
 from tenet.util.misc import register_callback, notify_callback
-from tenet.integration.api import DockableWindow, disassembler
+from tenet.util.disassembler import DockableWidget, disassembler
 
 #------------------------------------------------------------------------------
 # registers.py -- Register Controller
@@ -53,7 +53,7 @@ class RegisterController(object):
         #
 
         self.view = RegisterView(self, self.model)
-        new_dockable = DockableWindow("CPU Registers", self.view)
+        new_dockable = DockableWidget("CPU Registers", self.view)
 
         #
         # if there is a reference to a left over dockable window (e.g, from a

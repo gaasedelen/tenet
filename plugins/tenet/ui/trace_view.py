@@ -2,7 +2,7 @@ import logging
 
 from tenet.util.qt import *
 from tenet.util.misc import register_callback, notify_callback
-from tenet.integration.api import disassembler
+from tenet.util.disassembler import disassembler
 
 logger = logging.getLogger("Tenet.UI.TraceView")
 

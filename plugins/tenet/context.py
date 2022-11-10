@@ -15,7 +15,7 @@ from tenet.ui.trace_view import TraceDock
 from tenet.types import BreakpointType
 from tenet.trace.arch import ArchAMD64, ArchX86
 from tenet.trace.reader import TraceReader
-from tenet.integration.api import disassembler, DisassemblerContextAPI
+from tenet.util.disassembler import disassembler, DisassemblerContextAPI
 
 logger = logging.getLogger("Tenet.Context")
 

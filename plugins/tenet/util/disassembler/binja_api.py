@@ -7,8 +7,8 @@ import threading
 import collections
 
 from .api import DisassemblerCoreAPI, DisassemblerContextAPI
-from ..qt import *
-from ..misc import is_mainthread, not_mainthread
+from ...util.qt import *
+from ...util.misc import is_mainthread, not_mainthread
 
 import binaryninja
 from binaryninja import PythonScriptingInstance, binaryview
@@ -72,7 +72,7 @@ def execute_sync(function):
     return wrapper
 
 class BinjaCoreAPI(DisassemblerCoreAPI):
-    NAME = "Binja"
+    NAME = "BINJA"
 
     def __init__(self):
         super(BinjaCoreAPI, self).__init__()
@@ -108,11 +108,11 @@ class BinjaCoreAPI(DisassemblerCoreAPI):
 
     @staticmethod
     def execute_read(function):
-        return binaryninja.execute_sync(function)
+        return execute_sync(function)
 
     @staticmethod
     def execute_write(function):
-        return binaryninja.execute_sync(function)
+        return execute_sync(function)
 
     @staticmethod
     def execute_ui(function):
@@ -193,6 +193,7 @@ class BinjaContextAPI(DisassemblerContextAPI):
 
     def __init__(self, dctx):
         super(BinjaContextAPI, self).__init__(dctx)
+        self.bv = dctx
 
     @property
     def busy(self):
@@ -294,7 +295,7 @@ class BinjaContextAPI(DisassemblerContextAPI):
         func.name = new_name
 
     def is_64bit(self) -> bool:
-        return binaryview.address_size & 8
+        return self.bv.address_size & 8
 
     def is_call_insn(self, address):
         functions = binaryview.get_functions_containing(address)
@@ -334,36 +335,36 @@ class BinjaContextAPI(DisassemblerContextAPI):
         return mapped
 
     #TODO <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-    def get_next_insn(self, address):
+    # def get_next_insn(self, address):
 
-        xb = ida_xref.xrefblk_t()
-        ok = xb.first_from(address, ida_xref.XREF_ALL)
+    #     xb = ida_xref.xrefblk_t()
+    #     ok = xb.first_from(address, ida_xref.XREF_ALL)
 
-        while ok and xb.iscode:
-            if xb.type == ida_xref.fl_F:
-                return xb.to
-            ok = xb.next_from()
+    #     while ok and xb.iscode:
+    #         if xb.type == ida_xref.fl_F:
+    #             return xb.to
+    #         ok = xb.next_from()
 
-        return -1
+    #     return -1
     #TODO <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-    def get_prev_insn(self, address):
+    # def get_prev_insn(self, address):
 
-        xb = ida_xref.xrefblk_t()
-        ok = xb.first_to(address, ida_xref.XREF_ALL)
+    #     xb = ida_xref.xrefblk_t()
+    #     ok = xb.first_to(address, ida_xref.XREF_ALL)
 
-        while ok and xb.iscode:
-            if xb.type == ida_xref.fl_F:
-                return xb.frm
-            ok = xb.next_to()
+    #     while ok and xb.iscode:
+    #         if xb.type == ida_xref.fl_F:
+    #             return xb.frm
+    #         ok = xb.next_to()
 
-        return -1
+    #     return -1
 
     # From binja debugger api 
-    def set_breakpoint(self, address):
-        dbg.add_breakpoint(address)
+    # def set_breakpoint(self, address):
+    #     dbg.add_breakpoint(address)
 
-    def delete_breakpoint(self, address):
-        dbg.delete_breakpoint(address)
+    # def delete_breakpoint(self, address):
+    #     dbg.delete_breakpoint(address)
 
     #--------------------------------------------------------------------------
     # Hooks API
@@ -417,7 +418,6 @@ class RenameHooks(binaryview.BinaryDataNotification):
 #------------------------------------------------------------------------------
 
 if QT_AVAILABLE:
-
     import binaryninjaui
     from binaryninjaui import DockHandler, DockContextHandler, UIContext, UIActionHandler
 
@@ -427,6 +427,7 @@ if QT_AVAILABLE:
         """
 
         def __init__(self, parent, name):
+            super(DockableWidget, self).__init__()
             QtWidgets.QWidget.__init__(self, parent)
             DockContextHandler.__init__(self, self, name)
 

@@ -16,23 +16,25 @@ disassembler = None
 
 if disassembler == None:
     try:
-        from .ida_api import IDACoreAPI, IDAContextAPI, DockableWindow
+        print("IDA")
+        from .ida_api import IDACoreAPI, IDAContextAPI, DockableWindow 
         disassembler = IDACoreAPI()
         DisassemblerContextAPI = IDAContextAPI
-    except ImportError:
-        pass
+    except ImportError as e:
+        print(e)
 
-##--------------------------------------------------------------------------
-## Binary Ninja API Shim
-##--------------------------------------------------------------------------
+#--------------------------------------------------------------------------
+# Binary Ninja API Shim
+#--------------------------------------------------------------------------
 
 if disassembler == None:
-   try:
-       from .binja_api import BinjaCoreAPI, BinjaContextAPI
-       disassembler = BinjaCoreAPI()
-       DisassemblerContextAPI = BinjaContextAPI
-   except ImportError:
-       pass
+    try:
+        print("Binja")
+        from .binja_api import BinjaCoreAPI, BinjaContextAPI, DockableWidget
+        disassembler = BinjaCoreAPI()
+        DisassemblerContextAPI = BinjaContextAPI
+    except ImportError as e:
+        print(e)
 
 #--------------------------------------------------------------------------
 # Unknown Disassembler

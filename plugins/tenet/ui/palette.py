@@ -8,7 +8,7 @@ from json.decoder import JSONDecodeError
 from tenet.util.qt import *
 from tenet.util.misc import *
 from tenet.util.log import pmsg
-from tenet.integration.api import disassembler
+from tenet.util.disassembler import disassembler
 
 logger = logging.getLogger("Plugin.UI.Palette")
 

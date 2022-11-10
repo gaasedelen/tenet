@@ -2,7 +2,7 @@ import collections
 
 from tenet.types import BreakpointType
 from tenet.util.qt import *
-from tenet.integration.api import disassembler
+from tenet.util.disassembler import disassembler
 
 class RegisterView(QtWidgets.QWidget):
     """

@@ -3,11 +3,26 @@ import sys
 import logging
 
 from .misc import makedirs, is_plugin_dev
-from ..integration.api import disassembler
+from .disassembler import disassembler
 
 #------------------------------------------------------------------------------
 # Log / Print helpers
 #------------------------------------------------------------------------------
+
+def lmsg(message):
+    """
+    Print a message to the disassembler output window, prefixed with [Tenet]
+    """
+
+    # prefix the message
+    prefix_message = "[Tenet] %s" % message
+
+    # only print to disassembler if its output window is alive
+    if disassembler.is_msg_inited():
+        disassembler.message(prefix_message)
+    else:
+        logger.info(message)
+
 
 def pmsg(message):
     """
