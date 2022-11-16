@@ -1,7 +1,7 @@
 from tenet.ui import *
 from tenet.types import *
 from tenet.util.qt.util import copy_to_clipboard
-from tenet.util.disassembler import DockableWidget
+from tenet.util.disassembler import DockableWindow
 
 #------------------------------------------------------------------------------
 # hex.py -- Hex Dump Controller
@@ -53,7 +53,7 @@ class HexController(object):
         # anything that once was
 
         self.view = HexView(self, self.model)
-        new_dockable = DockableWidget(self._title, self.view)
+        new_dockable = DockableWindow(self._title, self.view)
 
         #
         # if there is a reference to a left over dockable window (e.g, from a

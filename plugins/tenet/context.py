@@ -265,6 +265,7 @@ class TenetContext(object):
 
         mw = get_qmainwindow()
         mw.addToolBar(QtCore.Qt.RightToolBarArea, self.trace)
+        # mw.addToolBar(QtCore.Qt.RightToolBarArea, self.trace)
         self.trace.show()
 
         # trigger update check

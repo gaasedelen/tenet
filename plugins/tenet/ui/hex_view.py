@@ -29,7 +29,7 @@ class HexView(QtWidgets.QAbstractScrollArea):
         self.setMouseTracking(True)
 
         fm = QtGui.QFontMetricsF(font)
-        self._char_width = fm.width('9')
+        self._char_width = fm.tightBoundingRect('9').width()
         self._char_height = int(fm.tightBoundingRect('9').height() * 1.75)
         self._char_descent = self._char_height - fm.descent()*0.75
 
@@ -75,14 +75,14 @@ class HexView(QtWidgets.QAbstractScrollArea):
         #
 
         self._action_break = {}
+        self._break_menu = QtWidgets.QMenu("Break on...")
 
         for name, bp_type in bp_types:
             action = QtWidgets.QAction(name, None)
             action.setCheckable(True)
             self._action_break[action] = bp_type
+            self._break_menu.addAction(action)
 
-        self._break_menu = QtWidgets.QMenu("Break on...")
-        self._break_menu.addActions(self._action_break)
 
         #
         # goto action groups
@@ -108,7 +108,8 @@ class HexView(QtWidgets.QAbstractScrollArea):
         ]
 
         for submenu, actions in self._goto_menus:
-            submenu.addActions(actions)
+            for action in actions:
+                submenu.addAction(action)
 
         # install the right click context menu
         self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)

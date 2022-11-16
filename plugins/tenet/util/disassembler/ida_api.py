@@ -315,14 +315,6 @@ class IDAContextAPI(DisassemblerContextAPI):
     def delete_breakpoint(self, address):
         ida_dbg.del_bpt(address)
 
-    def show_registers(self, register_controller):
-        register_controller.show(position=ida_kernwin.DP_RIGHT)
-    
-    def show_memory(self, memory_controller):
-        memory_controller.show("Output window", ida_kernwin.DP_TAB | ida_kernwin.DP_BEFORE)
-    
-    def show_stack(self, stack_controller):
-        stack_controller.show("Memory View", ida_kernwin.DP_RIGHT)
 #------------------------------------------------------------------------------
 # HexRays Util
 #------------------------------------------------------------------------------

@@ -30,7 +30,7 @@ if disassembler == None:
 if disassembler == None:
     try:
         print("Binja")
-        from .binja_api import BinjaCoreAPI, BinjaContextAPI, DockableWidget
+        from .binja_api import BinjaCoreAPI, BinjaContextAPI, DockableWindow
         disassembler = BinjaCoreAPI()
         DisassemblerContextAPI = BinjaContextAPI
     except ImportError as e:

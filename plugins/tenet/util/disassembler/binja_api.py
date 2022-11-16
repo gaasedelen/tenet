@@ -150,6 +150,9 @@ class BinjaCoreAPI(DisassemblerCoreAPI):
     def message(self, message):
         print(message)
 
+    # Dunno if binja has to do this or what
+    def refresh_views(self):
+        pass
 
     #--------------------------------------------------------------------------
     # UI API Shims
@@ -160,7 +163,7 @@ class BinjaCoreAPI(DisassemblerCoreAPI):
         dock_handler.addDockWidget(dockable_name, create_widget_callback, QtCore.Qt.RightDockWidgetArea, QtCore.Qt.Horizontal, False)
 
     def create_dockable_widget(self, parent, dockable_name):
-        return DockableWidget(parent, dockable_name)
+        return DockableWindow(parent, dockable_name)
 
     def show_dockable(self, dockable_name):
         dock_handler = DockHandler.getActiveDockHandler()
@@ -170,6 +173,7 @@ class BinjaCoreAPI(DisassemblerCoreAPI):
         dock_handler = DockHandler.getActiveDockHandler()
         dock_handler.setVisible(dockable_name, False)
 
+    #TODO These are in a bad spot
     def show_registers(self, register_controller):
         register_controller.show()
     
@@ -202,6 +206,7 @@ class BinjaContextAPI(DisassemblerContextAPI):
     def __init__(self, dctx):
         super(BinjaContextAPI, self).__init__(dctx)
         self.bv = dctx
+        self.bp_tag = self.bv.create_tag_type("breakpoint", "🔴")
 
     @property
     def busy(self):
@@ -338,12 +343,10 @@ class BinjaContextAPI(DisassemblerContextAPI):
         return instruction_addresses
     #! Not sure how binja will deal with heap addresses and stuff
     def is_mapped(self, address):
-        mapped = False
-        for seg in binaryview.segments:
+        for seg in self.bv.segments:
             if seg.start < address < seg.end:
-                mapped = True
-                break
-        return mapped
+                return True
+        return False
 
 
     #TODO <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -372,12 +375,15 @@ class BinjaContextAPI(DisassemblerContextAPI):
     #     return -1
 
     # From binja debugger api 
-    # def set_breakpoint(self, address):
-    #     dbg.add_breakpoint(address)
+    #! Not sure what tag type to use
+    def set_breakpoint(self, address):
+        function.create_user_data_tag(address,self.bp_tag, unique=True)
 
-    # def delete_breakpoint(self, address):
-    #     dbg.delete_breakpoint(address)
+    def delete_breakpoint(self, address):
+        function.remove_user_data_tags_of_type(address,self.bp_tag)
 
+    # def delete_all_breakpoints(self):
+    #     pass
     #--------------------------------------------------------------------------
     # Hooks API
     #--------------------------------------------------------------------------
@@ -433,57 +439,53 @@ if QT_AVAILABLE:
     import binaryninjaui
     from binaryninjaui import DockHandler, DockContextHandler, UIContext, UIActionHandler
 
-    class DockableWidget(QtWidgets.QWidget, DockContextHandler):
+    class DockableWindow(QtWidgets.QWidget,DockContextHandler):
         """
         A dockable Qt widget for Binary Ninja.
         """
 
         def __init__(self, title, widget):
-            super(DockableWidget, self).__init__()
+            # self.dock_handler = DockHandler.getActiveDockHandler()
+            # self.actionHandler = UIActionHandler()
+            # self.actionHandler.setupActionHandler(self)
             self.title = title
             self.widget = widget
 
-            self.actionHandler = UIActionHandler()
-            self.actionHandler.setupActionHandler(self)
+            self.visible = False
+            self._dock_position = None
+            self._dock_target = None
 
-            self._active_view = None
-            self._visible_for_view = collections.defaultdict(lambda: False)
+            # self._active_view = None
+            # self._visible_for_view = collections.defaultdict(lambda: False)
 
-        @property
-        def visible(self):
-            return self._visible_for_view[self._active_view]
+        def OnCreate(self, form):
+            # #print("Creating", self.title)
+            # self.parent = self.FormToPyQtWidget(form)
 
-        @visible.setter
-        def visible(self, is_visible):
-            self._visible_for_view[self._active_view] = is_visible
+            # layout = QtWidgets.QVBoxLayout()
+            # layout.setContentsMargins(0, 0, 0, 0)
+            # layout.addWidget(self.widget)
+            # self.parent.setLayout(layout)
+            print('Oncreate')
+            pass
 
-        def shouldBeVisible(self, view_frame):
-            if not view_frame:
-                return False
+        def set_dock_position(self, dest_ctrl=None, position=0):
+            self._dock_target = dest_ctrl
+            self._dock_position = position
 
-            if USING_PYSIDE6:
-                import shiboken6 as shiboken
-            else:
-                import shiboken2 as shiboken
-
-            vf_ptr = shiboken.getCppPointer(view_frame)[0]
-            return self._visible_for_view[vf_ptr]
-
-        def notifyVisibilityChanged(self, is_visible):
-            self.visible = is_visible
-
-        def notifyViewChanged(self, view_frame):
-            if not view_frame:
-                self._active_view = None
+            if not self.visible:
                 return
 
-            if USING_PYSIDE6:
-                import shiboken6 as shiboken
-            else:
-                import shiboken2 as shiboken
+        def show(self):
+            dock_position = self._dock_position
 
-            self._active_view = shiboken.getCppPointer(view_frame)[0]
 
-            if self.visible:
-                dock_handler = DockHandler.getActiveDockHandler()
-                dock_handler.setVisible(self.m_name, True)
+            # self.dock_handler.addDockWidget(self.title, self.widget, QtCore.Qt.RightDockWidgetArea, QtCore.Qt.Horizontal, False)
+            # self.dock_handler.setVisible(self.title, True)
+            # print(type(self.widget))
+            # print(type(self.widget.parent))
+
+            # Need to create a dockable widget
+
+            print('testtestestsefsjfasfksdfkdsjlfasdkj')
+            pass
