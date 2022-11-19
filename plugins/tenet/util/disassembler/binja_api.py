@@ -13,6 +13,8 @@ from ...util.misc import is_mainthread, not_mainthread
 import binaryninja
 from binaryninja import PythonScriptingInstance, binaryview
 from binaryninja.plugin import BackgroundTaskThread
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QApplication, QHBoxLayout, QVBoxLayout, QLabel, QWidget
 
 logger = logging.getLogger("Tenet.API.Binja")
 
@@ -436,56 +438,77 @@ class RenameHooks(binaryview.BinaryDataNotification):
 #------------------------------------------------------------------------------
 
 if QT_AVAILABLE:
+
     import binaryninjaui
     from binaryninjaui import DockHandler, DockContextHandler, UIContext, UIActionHandler
 
-    class DockableWindow(QtWidgets.QWidget,DockContextHandler):
+    class DockableWindow(DockContextHandler, QtWidgets.QWidget):
         """
         A dockable Qt widget for Binary Ninja.
         """
 
-        def __init__(self, title, widget):
-            # self.dock_handler = DockHandler.getActiveDockHandler()
-            # self.actionHandler = UIActionHandler()
-            # self.actionHandler.setupActionHandler(self)
-            self.title = title
+        def __init__(self, name, widget):
+            self.qw = get_qmainwindow()
+            self.dock_handler = self.qw.findChild(DockHandler, '__DockHandler')
+            self.name = name
             self.widget = widget
 
-            self.visible = False
-            self._dock_position = None
-            self._dock_target = None
+            QtWidgets.QWidget.__init__(self, self.qw)
+            DockContextHandler.__init__(self, self, name)
 
-            # self._active_view = None
-            # self._visible_for_view = collections.defaultdict(lambda: False)
+            # self.actionHandler = UIActionHandler()
+            # self.actionHandler.setupActionHandler(self)
 
-        def OnCreate(self, form):
-            # #print("Creating", self.title)
-            # self.parent = self.FormToPyQtWidget(form)
 
-            # layout = QtWidgets.QVBoxLayout()
-            # layout.setContentsMargins(0, 0, 0, 0)
-            # layout.addWidget(self.widget)
-            # self.parent.setLayout(layout)
-            print('Oncreate')
-            pass
 
-        def set_dock_position(self, dest_ctrl=None, position=0):
-            self._dock_target = dest_ctrl
-            self._dock_position = position
+            self._active_view = None
+            self._visible_for_view = collections.defaultdict(lambda: False)
 
-            if not self.visible:
-                return
+            layout = QtWidgets.QVBoxLayout()
+            layout.setContentsMargins(0, 0, 0, 0)
+            layout.addWidget(self.widget)
+            self.setLayout(layout)
+
+        @property
+        def visible(self):
+            return self._visible_for_view[self._active_view]
+
+        @visible.setter
+        def visible(self, is_visible):
+            self._visible_for_view[self._active_view] = is_visible
 
         def show(self):
-            dock_position = self._dock_position
+            dock_handler = self.qw.findChild(DockHandler, '__DockHandler')
+            dock_handler.addDockWidget(self, Qt.BottomDockWidgetArea, Qt.Horizontal, True)
 
 
-            # self.dock_handler.addDockWidget(self.title, self.widget, QtCore.Qt.RightDockWidgetArea, QtCore.Qt.Horizontal, False)
-            # self.dock_handler.setVisible(self.title, True)
-            # print(type(self.widget))
-            # print(type(self.widget.parent))
+        def shouldBeVisible(self, view_frame):
+            if not view_frame:
+                return False
 
-            # Need to create a dockable widget
+            if USING_PYSIDE6:
+                import shiboken6 as shiboken
+            else:
+                import shiboken2 as shiboken
 
-            print('testtestestsefsjfasfksdfkdsjlfasdkj')
-            pass
+            vf_ptr = shiboken.getCppPointer(view_frame)[0]
+            return self._visible_for_view[vf_ptr]
+
+        def notifyVisibilityChanged(self, is_visible):
+            self.visible = is_visible
+
+        def notifyViewChanged(self, view_frame):
+            if not view_frame:
+                self._active_view = None
+                return
+
+            if USING_PYSIDE6:
+                import shiboken6 as shiboken
+            else:
+                import shiboken2 as shiboken
+
+            self._active_view = shiboken.getCppPointer(view_frame)[0]
+
+            if self.visible:
+                dock_handler = DockHandler.getActiveDockHandler()
+                dock_handler.setVisible(self.m_name, True)

@@ -14,6 +14,7 @@ from tenet.util.disassembler import disassembler
 
 logger = logging.getLogger("Tenet.Binja.Integration")
 
+BINJA_GLOBAL_CTX = "blah this value doesn't matter"
 #------------------------------------------------------------------------------
 # Lighthouse Binja Integration
 #---------------------------/DOckab---------------------------------------------------
@@ -22,11 +23,9 @@ class TenetBinja(TenetCore, BinaryDataNotification):
     """
     Tenet UI Integration for Binary Ninja.
     """
-    BinaryDataNotification.__init__()
     def __init__(self):
 
         self._ui_breakpoint_changed_callbacks = []
-
         super(TenetBinja, self).__init__()
 
     #! Does this apply still?
@@ -348,7 +347,7 @@ class TenetBinja(TenetCore, BinaryDataNotification):
         """
         TODO/XXX this is pretty gross
         """
-        ctx = self.get_context()
+        ctx = self.get_context(BINJA_GLOBAL_CTX)
         if not ctx.reader:
             return
         
@@ -410,7 +409,7 @@ class TenetBinja(TenetCore, BinaryDataNotification):
             else:
                 continue
 
-            function = self.bv.get_function_containing(address)
+            function = ctx.get_function_containing(address)
             function.set_auto_instr_highlight(address,color)
             # lines_out.entries.push_back(entry)
     #----------------------------------------------------------------------
