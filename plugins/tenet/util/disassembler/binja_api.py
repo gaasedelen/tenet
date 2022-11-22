@@ -13,8 +13,10 @@ from ...util.misc import is_mainthread, not_mainthread
 import binaryninja
 from binaryninja import PythonScriptingInstance, binaryview
 from binaryninja.plugin import BackgroundTaskThread
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QApplication, QHBoxLayout, QVBoxLayout, QLabel, QWidget
+from PySide6.QtCore import Qt, QRectF, QMetaType
+from PySide6.QtGui import QImage, QPainter, QFont, QColor
+from PySide6.QtWidgets import QApplication, QHBoxLayout, QVBoxLayout, \
+    QLabel, QWidget
 
 logger = logging.getLogger("Tenet.API.Binja")
 
@@ -440,7 +442,8 @@ class RenameHooks(binaryview.BinaryDataNotification):
 if QT_AVAILABLE:
 
     import binaryninjaui
-    from binaryninjaui import DockHandler, DockContextHandler, UIContext, UIActionHandler
+    from binaryninjaui import DockHandler, DockContextHandler, UIContext, UIActionHandler, SidebarWidgetType
+    from binaryninjaui import Sidebar, SidebarWidget, SidebarWidgetType, SidebarWidgetContainer, Sidebar
 
     class DockableWindow(DockContextHandler, QtWidgets.QWidget):
         """
@@ -512,3 +515,172 @@ if QT_AVAILABLE:
             if self.visible:
                 dock_handler = DockHandler.getActiveDockHandler()
                 dock_handler.setVisible(self.m_name, True)
+
+
+    class RegistersSidebarWidget(SidebarWidget):
+        def __init__(self, name, widget):
+            SidebarWidget.__init__(self, name)
+            self.name = name
+            self.widget = widget
+            layout = QtWidgets.QVBoxLayout()
+            layout.setContentsMargins(0, 0, 0, 0)
+            layout.addWidget(self.widget)
+            self.setLayout(layout)
+
+
+        def notifyOffsetChanged(self, offset):
+            # self.offset.setText(hex(offset))
+            return
+
+        def notifyViewChanged(self, view_frame):
+            # if view_frame is None:
+            #     self.datatype.setText("None")
+            #     self.data = None
+            # else:
+            #     self.datatype.setText(view_frame.getCurrentView())
+            #     view = view_frame.getCurrentViewInterface()
+            #     self.data = view.getData()
+            return
+
+        def contextMenuEvent(self, event):
+            self.m_contextMenuManager.show(self.m_menu, self.actionHandler)
+
+    class RegistersSidebarWidgetType(SidebarWidgetType):
+        def __init__(self, name, widget):
+
+            self.name = name
+            self.widget = widget
+
+            # Sidebar icons are 28x28 points. Should be at least 56x56 pixels for
+            # HiDPI display compatibility. They will be automatically made theme
+            # aware, so you need only provide a grayscale image, where white is
+            # the color of the shape.
+            icon = QImage(56, 56, QImage.Format_RGB32)
+            icon.fill(0)
+
+            # Render an "H" as the example icon
+            p = QPainter()
+            p.begin(icon)
+            p.setFont(QFont("Open Sans", 56))
+            p.setPen(QColor(255, 255, 255, 255))
+            p.drawText(QRectF(0, 0, 56, 56), Qt.AlignCenter, "R")
+            p.end()
+
+            SidebarWidgetType.__init__(self, icon, "Registers")
+
+        def show(self):
+            Sidebar.addSidebarWidgetType(self)
+            Sidebar.activate(self)
+
+        def createWidget(self, frame, data):
+            # This callback is called when a widget needs to be created for a given context. Different
+            # widgets are created for each unique BinaryView. They are created on demand when the sidebar
+            # widget is visible and the BinaryView becomes active.
+            self.registerssidebarwidget = RegistersSidebarWidget(self.name, self.widget)
+            return self.registerssidebarwidget
+
+
+    from binaryninjaui import MiniGraph
+
+    class StackSidebarWidget(SidebarWidget):
+        def __init__(self, name, widget):
+            SidebarWidget.__init__(self, name)
+            self.name = name
+            self.widget = widget
+            layout = QtWidgets.QVBoxLayout()
+            layout.setContentsMargins(0, 0, 0, 0)
+            layout.addWidget(self.widget)
+            self.setLayout(layout)
+
+
+        def notifyOffsetChanged(self, offset):
+            # self.offset.setText(hex(offset))
+            return
+
+        def notifyViewChanged(self, view_frame):
+            # if view_frame is None:
+            #     self.datatype.setText("None")
+            #     self.data = None
+            # else:
+            #     self.datatype.setText(view_frame.getCurrentView())
+            #     view = view_frame.getCurrentViewInterface()
+            #     self.data = view.getData()
+            return
+
+        def contextMenuEvent(self, event):
+            self.m_contextMenuManager.show(self.m_menu, self.actionHandler)
+
+    class StackMiniGraphWidgetType(SidebarWidgetType):
+        def __init__(self, name, widget):
+
+            self.name = name
+            self.widget = widget
+
+            # Sidebar icons are 28x28 points. Should be at least 56x56 pixels for
+            # HiDPI display compatibility. They will be automatically made theme
+            # aware, so you need only provide a grayscale image, where white is
+            # the color of the shape.
+            icon = QImage(56, 56, QImage.Format_RGB32)
+            icon.fill(0)
+
+            # Render an "H" as the example icon
+            p = QPainter()
+            p.begin(icon)
+            p.setFont(QFont("Open Sans", 56))
+            p.setPen(QColor(255, 255, 255, 255))
+            p.drawText(QRectF(0, 0, 56, 56), Qt.AlignCenter, "S")
+            p.end()
+
+            SidebarWidgetType.__init__(self, icon, "Stack")
+
+        def show(self):
+            Sidebar.addSidebarWidgetType(self)
+            Sidebar.activate(self)
+
+        def isInReferenceArea(self):
+            return True
+
+        def createWidget(self, frame, data):
+            # This callback is called when a widget needs to be created for a given context. Different
+            # widgets are created for each unique BinaryView. They are created on demand when the sidebar
+            # widget is visible and the BinaryView becomes active.
+            self.stacksidebarwidget = StackSidebarWidget(self.name, self.widget)
+            return self.stacksidebarwidget
+
+
+    from binaryninjaui import GlobalAreaWidget, GlobalArea, UIActionHandler
+
+    class MemoryGlobalAreaWidget(GlobalAreaWidget):
+        def __init__(self, name, widget):
+            GlobalAreaWidget.__init__(self, name)
+            self.actionHandler = UIActionHandler()
+            self.actionHandler.setupActionHandler(self)
+            self.name = name
+            self.widget = widget
+            layout = QtWidgets.QVBoxLayout()
+            layout.setContentsMargins(0, 0, 0, 0)
+            layout.addWidget(self.widget)
+            self.setLayout(layout)
+
+        def show(self):
+            GlobalArea.addWidget(lambda context: self)
+            # GlobalArea.focusWidget(self.m_title)
+            # self.focusWidget() 
+            return
+
+        def notifyOffsetChanged(self, offset):
+            self.offset.setText(hex(offset))
+            return
+
+        def notifyViewChanged(self, view_frame):
+            if view_frame is None:
+                self.datatype.setText("None")
+                self.data = None
+            else:
+                self.datatype.setText(view_frame.getCurrentView())
+                view = view_frame.getCurrentViewInterface()
+                self.data = view.getData()
+            return
+
+        def contextMenuEvent(self, event):
+            self.m_contextMenuManager.show(self.m_menu, self.actionHandler)

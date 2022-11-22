@@ -23,14 +23,14 @@ class HexView(QtWidgets.QAbstractScrollArea):
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
 
-        font = QtGui.QFont("Courier", pointSize=normalize_font(9))
+        font = QtGui.QFont("Courier", pointSize=normalize_font(10))
         font.setStyleHint(QtGui.QFont.TypeWriter)
         self.setFont(font)
         self.setMouseTracking(True)
 
         fm = QtGui.QFontMetricsF(font)
-        self._char_width = fm.tightBoundingRect('9').width()
-        self._char_height = int(fm.tightBoundingRect('9').height() * 1.75)
+        self._char_width = fm.boundingRect('N').width()
+        self._char_height = int(fm.tightBoundingRect('N').height() * 1.75)
         self._char_descent = self._char_height - fm.descent()*0.75
 
         self._click_timer = QtCore.QTimer(self)

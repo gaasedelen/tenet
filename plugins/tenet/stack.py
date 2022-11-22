@@ -1,7 +1,7 @@
 import struct
 
 from tenet.ui import *
-from tenet.hex import HexController
+from tenet.hex_sidebar import HexSidebarController
 from tenet.types import HexType, AuxType
 
 #------------------------------------------------------------------------------
@@ -17,7 +17,7 @@ from tenet.types import HexType, AuxType
 #    stack view might instead.
 #
 
-class StackController(HexController):
+class StackController(HexSidebarController):
     """
     The Stack Dump Controller (Logic)
     """

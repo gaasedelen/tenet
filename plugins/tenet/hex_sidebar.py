@@ -1,7 +1,7 @@
 from tenet.ui import *
 from tenet.types import *
 from tenet.util.qt.util import copy_to_clipboard
-from tenet.util.disassembler import MemoryGlobalAreaWidget
+from tenet.util.disassembler import StackMiniGraphWidgetType
 
 #------------------------------------------------------------------------------
 # hex.py -- Hex Dump Controller
@@ -15,7 +15,7 @@ from tenet.util.disassembler import MemoryGlobalAreaWidget
 #    views used by the plugin.
 #
 
-class HexController(object):
+class HexSidebarController(object):
     """
     A generalized controller for Hex View based window.
     """
@@ -53,7 +53,7 @@ class HexController(object):
         # anything that once was
 
         self.view = HexView(self, self.model)
-        new_dockable = MemoryGlobalAreaWidget(self._title, self.view)
+        new_dockable = StackMiniGraphWidgetType(self._title, self.view)
 
         #
         # if there is a reference to a left over dockable window (e.g, from a
