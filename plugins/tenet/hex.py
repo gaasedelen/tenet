@@ -52,8 +52,10 @@ class HexController(object):
         # then we are free to create new UI elements to take the place of
         # anything that once was
 
+        # from binaryninjaui import GlobalArea
         self.view = HexView(self, self.model)
         new_dockable = MemoryGlobalAreaWidget(self._title, self.view)
+        # GlobalArea.addWidget(lambda context: MemoryGlobalAreaWidget(self._title, self.view))
 
         #
         # if there is a reference to a left over dockable window (e.g, from a
@@ -61,14 +63,14 @@ class HexController(object):
         # hopefully take the same place as the old one
         #
 
-        if self.dockable:
-            new_dockable.copy_dock_position(self.dockable)
-        elif (target or position):
-            new_dockable.set_dock_position(target, position)
+        # if self.dockable:
+        #     new_dockable.copy_dock_position(self.dockable)
+        # elif (target or position):
+        #     new_dockable.set_dock_position(target, position)
 
-        # make the dockable/widget visible
-        self.dockable = new_dockable
-        self.dockable.show()
+        # # make the dockable/widget visible
+        # self.dockable = new_dockable
+        # self.dockable.show()
 
     def hide(self):
         """

@@ -208,6 +208,7 @@ class BinjaCoreAPI(DisassemblerCoreAPI):
 class BinjaContextAPI(DisassemblerContextAPI):
 
     def __init__(self, dctx):
+        print("Created binja context")
         super(BinjaContextAPI, self).__init__(dctx)
         self.bv = dctx
         self.bp_tag = self.bv.create_tag_type("breakpoint", "🔴")
@@ -321,7 +322,7 @@ class BinjaContextAPI(DisassemblerContextAPI):
         return False
 
     def is_call_insn(self, address):
-        functions = binaryview.get_functions_containing(address)
+        functions = self.bv.get_functions_containing(address)
         if functions[0].is_call_instruction(address):
             return True
         return False
@@ -352,39 +353,47 @@ class BinjaContextAPI(DisassemblerContextAPI):
                 return True
         return False
 
-
-    #TODO <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-    # def get_next_insn(self, address):
-
-    #     xb = ida_xref.xrefblk_t()
-    #     ok = xb.first_from(address, ida_xref.XREF_ALL)
-
-    #     while ok and xb.iscode:
-    #         if xb.type == ida_xref.fl_F:
-    #             return xb.to
-    #         ok = xb.next_from()
-
-    #     return -1
-    #TODO <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-    # def get_prev_insn(self, address):
-
-    #     xb = ida_xref.xrefblk_t()
-    #     ok = xb.first_to(address, ida_xref.XREF_ALL)
-
-    #     while ok and xb.iscode:
-    #         if xb.type == ida_xref.fl_F:
-    #             return xb.frm
-    #         ok = xb.next_to()
-
-    #     return -1
-
+    # ! his is so shitty. Why doesn't linear disassmely also give the address
+    def get_next_insn(self, address):
+        pos = self.bv.get_linear_disassembly_position_at(address)
+        for i,line in enumerate(pos.lines):            
+            if len(line.contents.tokens) == 0:
+                continue
+            #     return -1
+            # else:
+            current_address = line.contents.address 
+            if current_address == address:
+                if i == len(pos.lines)-1:
+                    pos.next()
+                    next_insn = pos.lines[0].contents.address
+                else:
+                    next_insn = pos.lines[i+1].contents.address
+                return next_insn
+    #! Also shitty
+    def get_prev_insn(self, address):
+        pos = self.bv.get_linear_disassembly_position_at(address)
+        for i,line in enumerate(pos.lines):            
+            if len(line.contents.tokens) == 0:
+                continue
+            # if line.type != binaryninja.enums.LinearDisassemblyLineType.CodeDisassemblyLineType.value:                
+            #     return -1
+            # else:
+            current_address = line.contents.address 
+            if current_address == address:
+                if i == 0:
+                    pos.previous()
+                    prev_insn = pos.lines[-1].contents.address
+                else:
+                    prev_insn = pos.lines[i-1].contents.address
+                return prev_insn
     # From binja debugger api 
     #! Not sure what tag type to use
     def set_breakpoint(self, address):
-        function.create_user_data_tag(address,self.bp_tag, unique=True)
+        print("Setting breakpoint")
+        self.bv.add_user_data_tag(address,self.bp_tag, unique=True)
 
     def delete_breakpoint(self, address):
-        function.remove_user_data_tags_of_type(address,self.bp_tag)
+        self.bv.remove_user_data_tags_of_type(address,self.bp_tag)
 
     # def delete_all_breakpoints(self):
     #     pass
@@ -570,7 +579,7 @@ if QT_AVAILABLE:
 
         def show(self):
             Sidebar.addSidebarWidgetType(self)
-            Sidebar.activate(self)
+            # Sidebar.activate(self)
 
         def createWidget(self, frame, data):
             # This callback is called when a widget needs to be created for a given context. Different
@@ -635,7 +644,7 @@ if QT_AVAILABLE:
 
         def show(self):
             Sidebar.addSidebarWidgetType(self)
-            Sidebar.activate(self)
+            # Sidebar.activate(self)
 
         def isInReferenceArea(self):
             return True
@@ -658,6 +667,7 @@ if QT_AVAILABLE:
             self.name = name
             self.widget = widget
             layout = QtWidgets.QVBoxLayout()
+            layout.addStretch()
             layout.setContentsMargins(0, 0, 0, 0)
             layout.addWidget(self.widget)
             self.setLayout(layout)
@@ -670,7 +680,7 @@ if QT_AVAILABLE:
 
         def notifyOffsetChanged(self, offset):
             self.offset.setText(hex(offset))
-            return
+            # return
 
         def notifyViewChanged(self, view_frame):
             if view_frame is None:
@@ -680,7 +690,7 @@ if QT_AVAILABLE:
                 self.datatype.setText(view_frame.getCurrentView())
                 view = view_frame.getCurrentViewInterface()
                 self.data = view.getData()
-            return
+            # return
 
         def contextMenuEvent(self, event):
             self.m_contextMenuManager.show(self.m_menu, self.actionHandler)

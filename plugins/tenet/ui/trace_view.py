@@ -349,6 +349,7 @@ class TraceBar(QtWidgets.QWidget):
         step_over = bool(mod_keys & QtCore.Qt.ShiftModifier)
 
         # scrolling up, so step 'backwards' through the trace
+        print(step_over)
         if event.angleDelta().y() > 0:
             self.reader.step_backward(1, step_over)
 
