@@ -9,6 +9,11 @@ import collections
 from .api import DisassemblerCoreAPI, DisassemblerContextAPI
 from ...util.qt import *
 from ...util.misc import is_mainthread, not_mainthread
+from ...util.disassembler import disassembler
+import binaryninjaui
+from binaryninjaui import DockHandler, DockContextHandler, UIContext, UIActionHandler, SidebarWidgetType
+from binaryninjaui import Sidebar, SidebarWidget, SidebarWidgetType, SidebarWidgetContainer, Sidebar
+from binaryninjaui import GlobalAreaWidget, GlobalArea, UIActionHandler
 
 import binaryninja
 from binaryninja import PythonScriptingInstance, binaryview
@@ -189,6 +194,13 @@ class BinjaCoreAPI(DisassemblerCoreAPI):
     #--------------------------------------------------------------------------
     # XXX Binja Specfic Helpers
     #--------------------------------------------------------------------------
+    def is_mapped(self, address):
+        bv = self.binja_get_bv_from_dock()
+
+        for seg in bv.segments:
+            if seg.start < address < seg.end:
+                return True
+        return False
 
     def binja_get_bv_from_dock(self):
         dh = DockHandler.getActiveDockHandler()
@@ -200,6 +212,7 @@ class BinjaCoreAPI(DisassemblerCoreAPI):
         vi = vf.getCurrentViewInterface()
         bv = vi.getData()
         return bv
+
 
 #------------------------------------------------------------------------------
 # Disassembler Context API (database-specific)
@@ -353,7 +366,7 @@ class BinjaContextAPI(DisassemblerContextAPI):
                 return True
         return False
 
-    # ! his is so shitty. Why doesn't linear disassmely also give the address
+    # ! This is so shitty. Why doesn't linear disassmely also give the address
     def get_next_insn(self, address):
         pos = self.bv.get_linear_disassembly_position_at(address)
         for i,line in enumerate(pos.lines):            
@@ -450,9 +463,6 @@ class RenameHooks(binaryview.BinaryDataNotification):
 
 if QT_AVAILABLE:
 
-    import binaryninjaui
-    from binaryninjaui import DockHandler, DockContextHandler, UIContext, UIActionHandler, SidebarWidgetType
-    from binaryninjaui import Sidebar, SidebarWidget, SidebarWidgetType, SidebarWidgetContainer, Sidebar
 
     class DockableWindow(DockContextHandler, QtWidgets.QWidget):
         """
@@ -579,6 +589,10 @@ if QT_AVAILABLE:
 
         def show(self):
             Sidebar.addSidebarWidgetType(self)
+            dh = DockHandler.getActiveDockHandler()
+            vf = dh.getViewFrame()
+            sb = vf.getSidebar()
+            sb.activate(self)
             # Sidebar.activate(self)
 
         def createWidget(self, frame, data):
@@ -588,8 +602,6 @@ if QT_AVAILABLE:
             self.registerssidebarwidget = RegistersSidebarWidget(self.name, self.widget)
             return self.registerssidebarwidget
 
-
-    from binaryninjaui import MiniGraph
 
     class StackSidebarWidget(SidebarWidget):
         def __init__(self, name, widget):
@@ -602,9 +614,6 @@ if QT_AVAILABLE:
             self.setLayout(layout)
 
 
-        def notifyOffsetChanged(self, offset):
-            # self.offset.setText(hex(offset))
-            return
 
         def notifyViewChanged(self, view_frame):
             # if view_frame is None:
@@ -644,6 +653,10 @@ if QT_AVAILABLE:
 
         def show(self):
             Sidebar.addSidebarWidgetType(self)
+            dh = DockHandler.getActiveDockHandler()
+            vf = dh.getViewFrame()
+            sb = vf.getSidebar()
+            sb.activate(self)
             # Sidebar.activate(self)
 
         def isInReferenceArea(self):
@@ -657,10 +670,10 @@ if QT_AVAILABLE:
             return self.stacksidebarwidget
 
 
-    from binaryninjaui import GlobalAreaWidget, GlobalArea, UIActionHandler
 
     class MemoryGlobalAreaWidget(GlobalAreaWidget):
         def __init__(self, name, widget):
+            print(GlobalArea.current())
             GlobalAreaWidget.__init__(self, name)
             self.actionHandler = UIActionHandler()
             self.actionHandler.setupActionHandler(self)
@@ -672,15 +685,16 @@ if QT_AVAILABLE:
             layout.addWidget(self.widget)
             self.setLayout(layout)
 
-        def show(self):
-            GlobalArea.addWidget(lambda context: self)
-            # GlobalArea.focusWidget(self.m_title)
-            # self.focusWidget() 
-            return
 
         def notifyOffsetChanged(self, offset):
             self.offset.setText(hex(offset))
             # return
+
+        def show(self):
+            GlobalArea.addWidget(lambda context: self)
+            # ga = ac.globalArea()
+            pass
+            # global_area = GlobalArea.toggle_visible()
 
         def notifyViewChanged(self, view_frame):
             if view_frame is None:

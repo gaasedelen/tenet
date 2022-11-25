@@ -259,6 +259,7 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
         """
         for reg_name, field in self._reg_fields.items():
             full_field = QtCore.QRect(field.name_rect.topLeft(), field.next_rect.bottomRight())
+            pos = QtCore.QPoint(pos.x(), pos.y())
             if full_field.contains(pos):
                 return field
         return None
@@ -289,7 +290,7 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
             return
 
         # mouse hover was not over IP register value, nothing to do
-        field = self._pos_to_field(event.pos())
+        field = self._pos_to_field(event.position())
         if not (field and field.name == self.model.arch.IP):
             return
 

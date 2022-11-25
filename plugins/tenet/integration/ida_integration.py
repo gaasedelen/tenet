@@ -395,11 +395,11 @@ class TenetIDA(TenetCore):
         widget_type = ida_kernwin.get_widget_type(widget)
 
         if widget_type == ida_kernwin.BWN_DISASM:
-            self._highlight_disassesmbly(lines_out, widget, lines_in)
+            self._highlight_disassembly(lines_out, widget, lines_in)
 
         return
 
-    def _highlight_disassesmbly(self, lines_out, widget, lines_in):
+    def _highlight_disassembly(self, lines_out, widget, lines_in):
         """
         TODO/XXX this is pretty gross
         """

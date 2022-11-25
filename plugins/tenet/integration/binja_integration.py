@@ -1,9 +1,11 @@
 import ctypes
 import logging
 
-from binaryninja import PluginCommand
+from binaryninja import PluginCommand, HighlightStandardColor, HighlightColor
 from binaryninjaui import UIAction, UIActionHandler, Menu
 from binaryninja.binaryview import BinaryDataNotification
+
+from binaryninjaui import GlobalAreaWidget, GlobalArea, UIContext
 
 from tenet.integration.core import TenetCore
 from tenet.types import BreakpointEvent
@@ -19,14 +21,18 @@ BINJA_GLOBAL_CTX = "blah this value doesn't matter"
 # Lighthouse Binja Integration
 #---------------------------/DOckab---------------------------------------------------
 
-class TenetBinja(TenetCore, BinaryDataNotification):
+class TenetBinja(TenetCore, GlobalAreaWidget):
     """
     Tenet UI Integration for Binary Ninja.
     """
     def __init__(self):
-
+        TenetCore.__init__(self)
+        # Make invisible widget so we can get view changes
+        # print(GlobalArea)
+        GlobalAreaWidget.__init__(self,"Invis_highlighter")
+        GlobalArea.addWidget(lambda context: self)
+        self.highlighted = set()
         self._ui_breakpoint_changed_callbacks = []
-        super(TenetBinja, self).__init__()
 
     #! Does this apply still?
     def get_context(self, dctx, startup=True):
@@ -34,6 +40,8 @@ class TenetBinja(TenetCore, BinaryDataNotification):
         Get the TenetContext object for a given database context.
         In Binary Ninja, a dctx is a BinaryView (BV).
         """
+
+
         dctx_id = ctypes.addressof(dctx.handle.contents)
 
         #
@@ -342,12 +350,19 @@ class TenetBinja(TenetCore, BinaryDataNotification):
     #     #     self._highlight_disassesmbly(lines_out, widget, lines_in)
 
     #     return
+    def notifyOffsetChanged(self, address):
+        self._highlight_disassembly(address)
 
-    def _highlight_disassesmbly(self, highlight_addresses):
+
+    def _highlight_disassembly(self, current_address):
         """
         TODO/XXX this is pretty gross
         """
-        ctx = self.get_context(BINJA_GLOBAL_CTX)
+        
+        dctx = disassembler.binja_get_bv_from_dock()
+        bv = dctx
+
+        ctx = self.get_context(dctx)
         if not ctx.reader:
             return
         
@@ -358,7 +373,7 @@ class TenetBinja(TenetCore, BinaryDataNotification):
         backward_color = self.palette.trail_backward
 
         r, g, b, _ = current_color.getRgb()
-        current_color = 0xFF << 24 | b << 16 | g << 8 | r
+        current_color = HighlightColor(red=r,green=g,blue=b)
         
         step_over = False
         modifiers = QtGui.QGuiApplication.keyboardModifiers()
@@ -380,15 +395,15 @@ class TenetBinja(TenetCore, BinaryDataNotification):
 
                 # convert to bgr
                 r, g, b, _ = color.getRgb()
-                binja_color = b << 16 | g << 8 | r
-                binja_color |= (0xFF - int(0xFF * percent)) << 24
+                alpha = (0xFF - int(0xFF * percent))
+                binja_color = HighlightColor(alpha=alpha,red=r,green=g,blue=b)
 
                 # save the trail color
                 rebased_address = ctx.reader.analysis.rebase_pointer(address)
                 trail[rebased_address] = binja_color
 
         current_address = ctx.reader.rebased_ip
-        if not disassembler.is_mapped(current_address):
+        if disassembler.is_mapped(current_address) == False:
             last_good_idx = ctx.reader.analysis.get_prev_mapped_idx(ctx.reader.idx)
             if last_good_idx != -1:
 
@@ -398,19 +413,41 @@ class TenetBinja(TenetCore, BinaryDataNotification):
                 # convert the trace-based instruction pointer to one that maps to the disassembler
                 current_address = ctx.reader.analysis.rebase_pointer(last_good_trace_address)
 
-        #! Todo clear the highlighting
-        for address in highlight_addresses:
-            if address in backward_trail:
-                color = backward_trail[address]
-            elif address in forward_trail:
-                color = forward_trail[address]
-            elif address == current_address:
-                color = current_color
-            else:
-                continue
+        # Will only highlight if in current function
+        #! This is really sloppy because if there are multiple functions
+        #! defined at an address, this won't work.
+        #! However the highlihgting does carry into function calls
+        #! which is kinda nice, but definitely unecessary
+    
+        #? ideally the view has something like ida where we have an
+        #? address list of the lines in view or something
+        addresses = set()
+        addresses.add(current_address)
 
-            function = ctx.get_function_containing(address)
+        for address in backward_trail:
+            function = bv.get_functions_containing(address)[0]
+            color = backward_trail[address]
             function.set_auto_instr_highlight(address,color)
+            self.highlighted.add(address)
+            addresses.add(address)
+
+        for address in forward_trail:
+            function = bv.get_functions_containing(address)[0]
+            color = forward_trail[address]
+            function.set_auto_instr_highlight(address,color)
+            self.highlighted.add(address)
+            addresses.add(address)
+
+        function = bv.get_functions_containing(current_address)[0]
+        function.set_auto_instr_highlight(current_address,current_color)
+        self.highlighted.add(current_address)
+
+        # Will clear highlight regardless of function
+        for address in self.highlighted.copy():
+            function = bv.get_functions_containing(address)[0]
+            if address not in addresses:
+                function.set_auto_instr_highlight(address, HighlightStandardColor.NoHighlightColor)
+                self.highlighted.remove(address)
             # lines_out.entries.push_back(entry)
     #----------------------------------------------------------------------
     # Callbacks
@@ -449,3 +486,5 @@ class BinjaCtxEntry():
         Ensure the context menu is always available in IDA.
         """
         return 1
+
+
