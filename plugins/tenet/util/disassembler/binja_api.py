@@ -489,6 +489,7 @@ if QT_AVAILABLE:
             layout = QtWidgets.QVBoxLayout()
             layout.setContentsMargins(0, 0, 0, 0)
             layout.addWidget(self.widget)
+
             self.setLayout(layout)
 
         @property
@@ -501,7 +502,7 @@ if QT_AVAILABLE:
 
         def show(self):
             dock_handler = self.qw.findChild(DockHandler, '__DockHandler')
-            dock_handler.addDockWidget(self, Qt.BottomDockWidgetArea, Qt.Horizontal, True)
+            dock_handler.addDockWidget(self, Qt.RightDockWidgetArea, Qt.Horizontal, True)
 
 
         def shouldBeVisible(self, view_frame):

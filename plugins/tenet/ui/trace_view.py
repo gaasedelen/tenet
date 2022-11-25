@@ -1325,7 +1325,7 @@ class TraceDock(QtWidgets.QToolBar):
         super(TraceDock, self).__init__(parent)
         self.pctx = pctx
         self.view = TraceView(pctx, self)
-        self.setMovable(False)
+        self.setMovable(True)
         self.setContentsMargins(0, 0, 0, 0)
         self.addWidget(self.view)
 

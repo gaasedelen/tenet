@@ -264,7 +264,7 @@ class TenetContext(object):
         disassembler.show_stack(self.stack)
 
         mw = get_qmainwindow()
-        mw.addToolBar(QtCore.Qt.RightToolBarArea, self.trace)
+        mw.addToolBar(QtCore.Qt.LeftToolBarArea, self.trace)
         # mw.addToolBar(QtCore.Qt.RightToolBarArea, self.trace)
         self.trace.show()
 

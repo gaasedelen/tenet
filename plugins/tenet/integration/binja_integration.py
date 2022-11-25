@@ -29,7 +29,7 @@ class TenetBinja(TenetCore, GlobalAreaWidget):
         TenetCore.__init__(self)
         # Make invisible widget so we can get view changes
         # print(GlobalArea)
-        GlobalAreaWidget.__init__(self,"Invis_highlighter")
+        GlobalAreaWidget.__init__(self,"Tenet Highlighter")
         GlobalArea.addWidget(lambda context: self)
         self.highlighted = set()
         self._ui_breakpoint_changed_callbacks = []
