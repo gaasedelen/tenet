@@ -583,7 +583,8 @@ if QT_AVAILABLE:
             p.begin(icon)
             p.setFont(QFont("Open Sans", 56))
             p.setPen(QColor(255, 255, 255, 255))
-            p.drawText(QRectF(0, 0, 56, 56), Qt.AlignCenter, "R")
+            image = QImage(".binaryninja/plugins/tenet/ui/resources/icons/registers.png")
+            p.drawImage(QRectF(0, 0, 56, 56), image)
             p.end()
 
             SidebarWidgetType.__init__(self, icon, "Registers")
@@ -635,6 +636,7 @@ if QT_AVAILABLE:
             self.name = name
             self.widget = widget
 
+
             # Sidebar icons are 28x28 points. Should be at least 56x56 pixels for
             # HiDPI display compatibility. They will be automatically made theme
             # aware, so you need only provide a grayscale image, where white is
@@ -647,7 +649,8 @@ if QT_AVAILABLE:
             p.begin(icon)
             p.setFont(QFont("Open Sans", 56))
             p.setPen(QColor(255, 255, 255, 255))
-            p.drawText(QRectF(0, 0, 56, 56), Qt.AlignCenter, "S")
+            image = QImage(".binaryninja/plugins/tenet/ui/resources/icons/stack.png")
+            p.drawImage(QRectF(0, 0, 56, 56), image)
             p.end()
 
             SidebarWidgetType.__init__(self, icon, "Stack")
