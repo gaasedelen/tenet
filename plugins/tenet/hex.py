@@ -54,7 +54,9 @@ class HexController(object):
 
         # from binaryninjaui import GlobalArea
         self.view = HexView(self, self.model)
-        new_dockable = DockableWindow(self._title, self.view)
+        print(self._title)
+        new_dockable = MemoryGlobalAreaWidget(self._title, self.view)
+        # new_dockable2 = MemoryGlobalAreaWidget(self._title, self.view)
 
         if self.dockable:
             new_dockable.copy_dock_position(self.dockable)
@@ -65,6 +67,7 @@ class HexController(object):
         self.dockable = new_dockable
         # GlobalArea.addWidget(lambda context: MemoryGlobalAreaWidget(self._title, self.view))
         new_dockable.show()
+        # new_dockable2.show()
         #
         # if there is a reference to a left over dockable window (e.g, from a
         # previous close of this window type) steal its dock positon so we can

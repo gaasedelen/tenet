@@ -1,9 +1,8 @@
 import ctypes
 import logging
 
-from binaryninja import PluginCommand, HighlightStandardColor, HighlightColor
+from binaryninja import PluginCommand, HighlightStandardColor, HighlightColor, BinaryView
 from binaryninjaui import UIAction, UIActionHandler, Menu
-from binaryninja.binaryview import BinaryDataNotification
 
 from binaryninjaui import GlobalAreaWidget, GlobalArea, UIContext
 
@@ -29,18 +28,18 @@ class TenetBinja(TenetCore, GlobalAreaWidget):
         TenetCore.__init__(self)
         # Make invisible widget so we can get view changes
         # print(GlobalArea)
-        GlobalAreaWidget.__init__(self,"Tenet Highlighter")
+        GlobalAreaWidget.__init__(self, 'Tenet highlighter')
         GlobalArea.addWidget(lambda context: self)
         self.highlighted = set()
         self._ui_breakpoint_changed_callbacks = []
 
-    #! Does this apply still?
-    def get_context(self, dctx, startup=True):
+    def get_context(self, dctx=None, startup=True):
         """
         Get the TenetContext object for a given database context.
         In Binary Ninja, a dctx is a BinaryView (BV).
         """
-
+        if not isinstance(dctx, BinaryView):
+            dctx = disassembler.binja_get_bv_from_dock()
 
         dctx_id = ctypes.addressof(dctx.handle.contents)
 

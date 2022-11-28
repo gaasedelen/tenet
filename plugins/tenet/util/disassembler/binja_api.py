@@ -21,7 +21,7 @@ from binaryninja.plugin import BackgroundTaskThread
 from PySide6.QtCore import Qt, QRectF, QMetaType
 from PySide6.QtGui import QImage, QPainter, QFont, QColor
 from PySide6.QtWidgets import QApplication, QHBoxLayout, QVBoxLayout, \
-    QLabel, QWidget
+    QLabel, QWidget, QSplitter
 
 logger = logging.getLogger("Tenet.API.Binja")
 
@@ -464,7 +464,7 @@ class RenameHooks(binaryview.BinaryDataNotification):
 if QT_AVAILABLE:
 
 
-    class DockableWindow(DockContextHandler, QtWidgets.QWidget):
+    class DockableWindow(DockContextHandler, QtWidgets.QAbstractScrollArea):
         """
         A dockable Qt widget for Binary Ninja.
         """
@@ -475,7 +475,7 @@ if QT_AVAILABLE:
             self.name = name
             self.widget = widget
 
-            QtWidgets.QWidget.__init__(self, self.qw)
+            QtWidgets.QAbstractScrollArea.__init__(self, self.qw)
             DockContextHandler.__init__(self, self, name)
 
             # self.actionHandler = UIActionHandler()
@@ -674,38 +674,39 @@ if QT_AVAILABLE:
 
     class MemoryGlobalAreaWidget(GlobalAreaWidget):
         def __init__(self, name, widget):
-            print(GlobalArea.current())
             GlobalAreaWidget.__init__(self, name)
             self.actionHandler = UIActionHandler()
             self.actionHandler.setupActionHandler(self)
             self.name = name
             self.widget = widget
             layout = QtWidgets.QVBoxLayout()
-            layout.addStretch()
             layout.setContentsMargins(0, 0, 0, 0)
             layout.addWidget(self.widget)
             self.setLayout(layout)
+            context = UIContext.allContexts()[0]
+            ga = context.globalArea()
+            ga.addWidget(self.create_widget())
+            ga.focusWidget("Memory")
 
+        def create_widget(self):
+            return self
 
-        def notifyOffsetChanged(self, offset):
-            self.offset.setText(hex(offset))
+        # def notifyOffsetChanged(self, offset):
+            # self.offset.setText(hex(offset))
             # return
 
         def show(self):
-            GlobalArea.addWidget(lambda context: self)
-            # ga = ac.globalArea()
             pass
-            # global_area = GlobalArea.toggle_visible()
 
-        def notifyViewChanged(self, view_frame):
-            if view_frame is None:
-                self.datatype.setText("None")
-                self.data = None
-            else:
-                self.datatype.setText(view_frame.getCurrentView())
-                view = view_frame.getCurrentViewInterface()
-                self.data = view.getData()
+        # def notifyViewChanged(self, view_frame):
+            # if view_frame is None:
+            #     self.datatype.setText("None")
+            #     self.data = None
+            # else:
+            #     self.datatype.setText(view_frame.getCurrentView())
+            #     view = view_frame.getCurrentViewInterface()
+            #     self.data = view.getData()
             # return
 
-        def contextMenuEvent(self, event):
-            self.m_contextMenuManager.show(self.m_menu, self.actionHandler)
+        # def contextMenuEvent(self, event):
+            # self.m_contextMenuManager.show(self.m_menu, self.actionHandler)

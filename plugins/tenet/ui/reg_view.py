@@ -40,6 +40,7 @@ class TimestampShell(QtWidgets.QWidget):
         self.model = model
         self.controller = controller
         self._init_ui()
+        self.setMaximumWidth(250)
 
     def _init_ui(self):
 

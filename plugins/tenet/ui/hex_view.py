@@ -195,10 +195,10 @@ class HexView(QtWidgets.QAbstractScrollArea):
 
         # the x position and width of the auxillary region (right section of view)
         self._pos_aux = self._pos_hex + self._width_hex
-        self._width_aux = (self.model.num_bytes_per_line * self._char_width) + self._char_width * 2
+        self._width_aux = (self.model.num_bytes_per_line * self._char_width) #+ self._char_width * 2
 
         # enforce a minimum view width, to ensure all text stays visible
-        self.setMinimumWidth(self._pos_aux + self._width_aux)
+        # self.setMaximumWidth(self._pos_aux + self._width_aux)
 
     def full_size(self):
         """
@@ -757,7 +757,7 @@ class HexView(QtWidgets.QAbstractScrollArea):
         #
         # paint 'readable' ASCII
         #
-
+        #! REMOVE FOR STACK
         byte_idx = byte_base_idx
         x_pos_aux = self._pos_aux + self._char_width
 
