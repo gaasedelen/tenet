@@ -1,5 +1,5 @@
 from tenet.util.log import logging_started, start_logging
-from tenet.integration.api import disassembler
+from tenet.util.disassembler import disassembler
 
 if not logging_started():
     logger = start_logging()
@@ -18,6 +18,9 @@ elif disassembler.NAME == "IDA":
     logger.info("Selecting IDA loader...")
     from tenet.integration.ida_loader import *
 
+elif disassembler.NAME == "BINJA":
+    logger.info("Selecting Binja loader")
+    from tenet.integration.binja_loader import *
 else:
     raise NotImplementedError("DISASSEMBLER-SPECIFIC SHIM MISSING")
 

@@ -2,7 +2,7 @@ import logging
 
 from tenet.util.qt import *
 from tenet.util.misc import register_callback, notify_callback
-from tenet.integration.api import disassembler
+from tenet.util.disassembler import disassembler
 
 logger = logging.getLogger("Tenet.UI.TraceView")
 
@@ -1324,7 +1324,7 @@ class TraceDock(QtWidgets.QToolBar):
         super(TraceDock, self).__init__(parent)
         self.pctx = pctx
         self.view = TraceView(pctx, self)
-        self.setMovable(False)
+        self.setMovable(True)
         self.setContentsMargins(0, 0, 0, 0)
         self.addWidget(self.view)
 

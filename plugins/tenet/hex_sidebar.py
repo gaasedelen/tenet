@@ -1,7 +1,7 @@
 from tenet.ui import *
 from tenet.types import *
 from tenet.util.qt.util import copy_to_clipboard
-from tenet.util.disassembler import MemoryGlobalAreaWidget, DockableWindow
+from tenet.util.disassembler import StackMiniGraphWidgetType
 
 #------------------------------------------------------------------------------
 # hex.py -- Hex Dump Controller
@@ -15,7 +15,7 @@ from tenet.util.disassembler import MemoryGlobalAreaWidget, DockableWindow
 #    views used by the plugin.
 #
 
-class HexController(object):
+class HexSidebarController(object):
     """
     A generalized controller for Hex View based window.
     """
@@ -52,11 +52,14 @@ class HexController(object):
         # then we are free to create new UI elements to take the place of
         # anything that once was
 
-        # from binaryninjaui import GlobalArea
         self.view = HexView(self, self.model)
-        print(self._title)
-        new_dockable = MemoryGlobalAreaWidget(self._title, self.view)
-        # new_dockable2 = MemoryGlobalAreaWidget(self._title, self.view)
+        new_dockable = StackMiniGraphWidgetType(self._title, self.view)
+
+        #
+        # if there is a reference to a left over dockable window (e.g, from a
+        # previous close of this window type) steal its dock positon so we can
+        # hopefully take the same place as the old one
+        #
 
         if self.dockable:
             new_dockable.copy_dock_position(self.dockable)
@@ -65,23 +68,7 @@ class HexController(object):
 
         # make the dockable/widget visible
         self.dockable = new_dockable
-        # GlobalArea.addWidget(lambda context: MemoryGlobalAreaWidget(self._title, self.view))
-        new_dockable.show()
-        # new_dockable2.show()
-        #
-        # if there is a reference to a left over dockable window (e.g, from a
-        # previous close of this window type) steal its dock positon so we can
-        # hopefully take the same place as the old one
-        #
-
-        # if self.dockable:
-        #     new_dockable.copy_dock_position(self.dockable)
-        # elif (target or position):
-        #     new_dockable.set_dock_position(target, position)
-
-        # # make the dockable/widget visible
-        # self.dockable = new_dockable
-        # self.dockable.show()
+        self.dockable.show()
 
     def hide(self):
         """

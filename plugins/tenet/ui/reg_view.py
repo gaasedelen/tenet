@@ -2,7 +2,7 @@ import collections
 
 from tenet.types import BreakpointType
 from tenet.util.qt import *
-from tenet.integration.api import disassembler
+from tenet.util.disassembler import disassembler
 
 class RegisterView(QtWidgets.QWidget):
     """
@@ -40,6 +40,7 @@ class TimestampShell(QtWidgets.QWidget):
         self.model = model
         self.controller = controller
         self._init_ui()
+        self.setMaximumWidth(250)
 
     def _init_ui(self):
 
@@ -91,12 +92,12 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
         self.controller = controller
         self.model = model
 
-        font = QtGui.QFont("Courier", pointSize=normalize_font(9))
+        font = QtGui.QFont("Courier", pointSize=normalize_font(10))
         font.setStyleHint(QtGui.QFont.TypeWriter)
         self.setFont(font)
 
         fm = QtGui.QFontMetricsF(font)
-        self._char_width = fm.width('9')
+        self._char_width = fm.boundingRect('N').width()
         self._char_height = fm.height()
 
         # default to fit roughly 50 printable characters
@@ -259,6 +260,7 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
         """
         for reg_name, field in self._reg_fields.items():
             full_field = QtCore.QRect(field.name_rect.topLeft(), field.next_rect.bottomRight())
+            pos = QtCore.QPoint(pos.x(), pos.y())
             if full_field.contains(pos):
                 return field
         return None
@@ -289,7 +291,7 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
             return
 
         # mouse hover was not over IP register value, nothing to do
-        field = self._pos_to_field(event.pos())
+        field = self._pos_to_field(event.position())
         if not (field and field.name == self.model.arch.IP):
             return
 

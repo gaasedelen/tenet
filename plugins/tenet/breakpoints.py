@@ -3,8 +3,8 @@ import itertools
 from tenet.ui import *
 from tenet.types import BreakpointType, BreakpointEvent, TraceBreakpoint
 from tenet.util.misc import register_callback, notify_callback
-from tenet.integration.api import DockableWindow
-from tenet.integration.api import disassembler
+from tenet.util.disassembler import DockableWindow
+from tenet.util.disassembler import disassembler
 
 #------------------------------------------------------------------------------
 # breakpoints.py -- Breakpoint Controller

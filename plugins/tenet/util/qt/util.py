@@ -24,8 +24,8 @@ def copy_to_clipboard(data):
     Copy the given data (a string) to the system clipboard.
     """
     cb = QtWidgets.QApplication.clipboard()
-    cb.clear(mode=cb.Clipboard)
-    cb.setText(data, mode=cb.Clipboard)
+    cb.clear()
+    cb.setText(data)
 
 def flush_qt_events():
     """

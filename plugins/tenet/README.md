@@ -1,16 +1,7 @@
 # Tenet - A Trace Explorer for Reverse Engineers
 
-
-## IDA
-
 <p align="center">
-<img alt="Tenet Trace Explorer IDA" src="screenshots/tenet_overview.gif"/>
-</p>
-
-## Binja
-
-<p align="center">
-<img alt="Tenet Trace Explorer Binja" src="screenshots/binja.png"/>
+<img alt="Tenet Trace Explorer" src="screenshots/tenet_overview.gif"/>
 </p>
 
 ## Overview

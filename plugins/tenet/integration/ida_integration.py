@@ -395,11 +395,11 @@ class TenetIDA(TenetCore):
         widget_type = ida_kernwin.get_widget_type(widget)
 
         if widget_type == ida_kernwin.BWN_DISASM:
-            self._highlight_disassesmbly(lines_out, widget, lines_in)
+            self._highlight_disassembly(lines_out, widget, lines_in)
 
         return
 
-    def _highlight_disassesmbly(self, lines_out, widget, lines_in):
+    def _highlight_disassembly(self, lines_out, widget, lines_in):
         """
         TODO/XXX this is pretty gross
         """
@@ -470,6 +470,7 @@ class TenetIDA(TenetCore):
                 entry = ida_kernwin.line_rendering_output_entry_t(line, ida_kernwin.LROEF_FULL_LINE, color)
                 lines_out.entries.push_back(entry)
 
+
     #----------------------------------------------------------------------
     # Callbacks
     #----------------------------------------------------------------------
@@ -507,6 +508,7 @@ class IDACtxEntry(ida_kernwin.action_handler_t):
         Ensure the context menu is always available in IDA.
         """
         return ida_kernwin.AST_ENABLE_ALWAYS
+
 
 #------------------------------------------------------------------------------
 # IDA UI Event Hooks

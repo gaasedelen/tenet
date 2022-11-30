@@ -5,7 +5,7 @@ import functools
 # TODO: should probably cleanup / document this file a bit better.
 #
 # it's worth noting that most of this is based on the same shim layer
-# used by lighthouse
+# used by tenet
 #
 
 import ida_ua
@@ -36,7 +36,6 @@ logger = logging.getLogger("Tenet.API.IDA")
 def execute_sync(function, sync_type):
     """
     Synchronize with the disassembler for safe database access.
-
     Modified from https://github.com/vrtadmin/FIRST-plugin-ida
     """
 
@@ -333,18 +332,14 @@ def hexrays_available():
 def map_line2citem(decompilation_text):
     """
     Map decompilation line numbers to citems.
-
     This function allows us to build a relationship between citems in the
     ctree and specific lines in the hexrays decompilation text.
-
     Output:
-
         +- line2citem:
         |    a map keyed with line numbers, holding sets of citem indexes
         |
         |      eg: { int(line_number): sets(citem_indexes), ... }
         '
-
     """
     line2citem = {}
 
@@ -365,18 +360,14 @@ def map_line2citem(decompilation_text):
 def map_line2node(cfunc, metadata, line2citem):
     """
     Map decompilation line numbers to node (basic blocks) addresses.
-
     This function allows us to build a relationship between graph nodes
     (basic blocks) and specific lines in the hexrays decompilation text.
-
     Output:
-
         +- line2node:
         |    a map keyed with line numbers, holding sets of node addresses
         |
         |      eg: { int(line_number): set(nodes), ... }
         '
-
     """
     line2node = {}
     treeitems = cfunc.treeitems
@@ -439,13 +430,10 @@ def map_line2node(cfunc, metadata, line2citem):
 def lex_citem_indexes(line):
     """
     Lex all ctree item indexes from a given line of text.
-
     The HexRays decompiler output contains invisible text tokens that can
     be used to attribute spans of text to the ctree items that produced them.
-
     This function will simply scrape and return a list of all the these
     tokens (COLOR_ADDR) which contain item indexes into the ctree.
-
     """
     i = 0
     indexes = []

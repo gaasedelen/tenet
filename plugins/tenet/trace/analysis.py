@@ -67,8 +67,10 @@ class TraceAnalysis(object):
         """
         Analyze the trace against the binary loaded by the disassembler.
         """
-        self._analyze_aslr()
-        self._analyze_unmapped()
+        # This shit doesn't work
+        # self._analyze_aslr()
+        self.slide = 0
+        # self._analyze_unmapped()
 
     def _analyze_aslr(self):
         """
@@ -78,7 +80,7 @@ class TraceAnalysis(object):
 
         # get *all* of the instruction addresses from disassembler
         instruction_addresses = dctx.get_instruction_addresses()
-
+        print(f"instruction address0: {instruction_addresses[0]}")
         #
         # bucket the instruction addresses from the disassembler
         # based on non-aslr'd bits (lower 12 bits, 0xFFF)
@@ -91,6 +93,7 @@ class TraceAnalysis(object):
 
         # get the set of unique, executed addresses from the trace
         trace_addresses = trace.ip_addrs
+        print(trace_addresses)
 
         #
         # scan the executed addresses from the trace, and discard
@@ -100,6 +103,7 @@ class TraceAnalysis(object):
 
         trace_buckets = collections.defaultdict(list)
         for executed_address in trace_addresses:
+            print(executed_address)
             bits = executed_address & 0xFFF
             if bits not in binary_buckets:
                 continue

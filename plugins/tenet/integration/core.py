@@ -4,7 +4,7 @@ import logging
 from tenet.util.log import pmsg
 from tenet.ui.palette import PluginPalette
 from tenet.util.update import check_for_update
-from tenet.integration.api import disassembler
+from tenet.util.disassembler import disassembler
 
 logger = logging.getLogger("Tenet.Core")
 
