@@ -15,7 +15,6 @@ from tenet.util.disassembler import disassembler
 
 logger = logging.getLogger("Tenet.Binja.Integration")
 
-BINJA_GLOBAL_CTX = "blah this value doesn't matter"
 #------------------------------------------------------------------------------
 # Lighthouse Binja Integration
 #---------------------------/DOckab---------------------------------------------------
@@ -29,9 +28,11 @@ class TenetBinja(TenetCore, GlobalAreaWidget):
         # Make invisible widget so we can get view changes
         # print(GlobalArea)
         GlobalAreaWidget.__init__(self, 'Tenet highlighter')
-        GlobalArea.addWidget(lambda context: self)
         self.highlighted = set()
         self._ui_breakpoint_changed_callbacks = []
+
+    def create_widget(self):
+        return self
 
     def get_context(self, dctx=None, startup=True):
         """
@@ -53,6 +54,9 @@ class TenetBinja(TenetCore, GlobalAreaWidget):
             # create a new 'context' representing this BNDB / bv
             lctx = TenetContext(self, dctx)
             if startup:
+                context = UIContext.allContexts()[0]
+                ga = context.globalArea()
+                ga.addWidget(self.create_widget())
                 lctx.start()
 
             # save the created ctx for future calls
