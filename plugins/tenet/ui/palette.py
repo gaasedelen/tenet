@@ -463,8 +463,8 @@ class PluginPalette(object):
         """
         Given a variable color_entry, select the best color based on the theme hints.
 
-        TODO: Most of this file is ripped from Lighthouse, including this func. In
-        Lighthouse is behaves a bit different than it does here, but I'm too lazy
+        TODO: Most of this file is ripped from Tenet, including this func. In
+        Tenet is behaves a bit different than it does here, but I'm too lazy
         to refactor/remove it for now (and maybe it'll get used later on??)
         """
         assert len(color_entry) == 2, "Malformed color entry, must be (dark, light)"

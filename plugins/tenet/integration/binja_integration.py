@@ -16,7 +16,7 @@ from tenet.util.disassembler import disassembler
 logger = logging.getLogger("Tenet.Binja.Integration")
 
 #------------------------------------------------------------------------------
-# Lighthouse Binja Integration
+# Tenet Binja Integration
 #---------------------------/DOckab---------------------------------------------------
 
 class TenetBinja(TenetCore, GlobalAreaWidget):
@@ -45,7 +45,7 @@ class TenetBinja(TenetCore, GlobalAreaWidget):
         dctx_id = ctypes.addressof(dctx.handle.contents)
 
         #
-        # create a new LighthouseContext if this is the first time a context
+        # create a new TenetContext if this is the first time a context
         # has been requested for this BNDB / bv
         #
 
@@ -63,16 +63,16 @@ class TenetBinja(TenetCore, GlobalAreaWidget):
             self.contexts[dctx_id] = lctx
 
         #
-        # for binja, we basically *never* want to start the lighthouse ctx
+        # for binja, we basically *never* want to start the tenet ctx
         # when it is first created. this is because binja will *immediately*
         # create a coverage overview widget for every database when it is
         # first opened.
         #
         # this is annoying, because we don't want to actually start up all
-        # of the lighthouse threads and subsystems unless the user actually
-        # starts trying to use lighthouse for their session.
+        # of the tenet threads and subsystems unless the user actually
+        # starts trying to use tenet for their session.
         #
-        # so we initialize the lighthouse context (with start()) on the
+        # so we initialize the tenet context (with start()) on the
         # second context request which will go throught the else block
         # below... any subsequent call to start() is effectively a nop!
         #
@@ -81,22 +81,22 @@ class TenetBinja(TenetCore, GlobalAreaWidget):
             lctx = self.contexts[dctx_id]
             lctx.start()
 
-        # return the lighthouse context object for this database ctx / bv
+        # return the tenet context object for this database ctx / bv
         return lctx
 
     def binja_close_context(self, dctx):
         """
-        Attempt to close / spin-down the LighthouseContext for the given dctx.
+        Attempt to close / spin-down the TenetContext for the given dctx.
         In Binary Ninja, a dctx is a BinaryView (BV).
         """
         dctx_id = ctypes.addressof(dctx.handle.contents)
 
-        # fetch the LighthouseContext for the closing BNDB
+        # fetch the TenetContext for the closing BNDB
         try:
-            lctx = self.lighthouse_contexts.pop(dctx_id)
+            lctx = self.tenet_contexts.pop(dctx_id)
 
         #
-        # if lighthouse was not actually used for this BNDB / session, then
+        # if tenet was not actually used for this BNDB / session, then
         # the lookup will fail as there is nothing to spindown
         #
 
@@ -104,7 +104,7 @@ class TenetBinja(TenetCore, GlobalAreaWidget):
             return
 
         # spin down the closing context (stop threads, cleanup qt state, etc)
-        logger.info("Closing a LighthouseContext...")
+        logger.info("Closing a TenetContext...")
         lctx.terminate()
 
     #--------------------------------------------------------------------------
@@ -126,14 +126,14 @@ class TenetBinja(TenetCore, GlobalAreaWidget):
     def _interactive_load_trace(self, context):
         dctx = disassembler.binja_get_bv_from_dock()
         if not dctx:
-            disassembler.warning("Lighthouse requires an open BNDB to load coverage.")
+            disassembler.warning("Tenet requires an open BNDB to load coverage.")
             return
         super()._interactive_load_trace(dctx)
 
     def _interactive_load_batch(self, context):
         dctx = disassembler.binja_get_bv_from_dock()
         if not dctx:
-            disassembler.warning("Lighthouse requires an open BNDB to load coverage.")
+            disassembler.warning("Tenet requires an open BNDB to load coverage.")
             return
         super(TenetBinja, self).interactive_load_batch(dctx)
 
@@ -149,12 +149,12 @@ class TenetBinja(TenetCore, GlobalAreaWidget):
         # XREF menu option.
         #
         # but asking whether or not the xref menu option should be shown is not
-        # a good indidication of 'is the user actually using lighthouse' so we
-        # do not want this to be one that creates lighthouse contexts
+        # a good indidication of 'is the user actually using tenet' so we
+        # do not want this to be one that creates tenet contexts
         #
 
         dctx_id = ctypes.addressof(dctx.handle.contents)
-        lctx = self.lighthouse_contexts.get(dctx_id, None)
+        lctx = self.tenet_contexts.get(dctx_id, None)
         if not lctx:
             return False
 
@@ -164,7 +164,7 @@ class TenetBinja(TenetCore, GlobalAreaWidget):
     def _open_coverage_overview(self, context):
         dctx = disassembler.binja_get_bv_from_dock()
         if not dctx:
-            disassembler.warning("Lighthouse requires an open BNDB to open the overview.")
+            disassembler.warning("Tenet requires an open BNDB to open the overview.")
             return
         super(TenetBinja, self).open_coverage_overview(dctx)
 

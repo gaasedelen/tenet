@@ -5,7 +5,7 @@ import functools
 # TODO: should probably cleanup / document this file a bit better.
 #
 # it's worth noting that most of this is based on the same shim layer
-# used by lighthouse
+# used by tenet
 #
 
 import ida_ua

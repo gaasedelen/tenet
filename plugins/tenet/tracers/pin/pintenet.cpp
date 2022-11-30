@@ -5,7 +5,7 @@
 //                   @ RET2 Systems, Inc.
 //
 // Adaptions from the CodeCoverage pin tool by Agustin Gianni as
-// contributed to Lighthouse: https://github.com/gaasedelen/lighthouse
+// contributed to Tenet: https://github.com/gaasedelen/tenet
 //
 
 #include <iostream>

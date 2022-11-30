@@ -1,7 +1,7 @@
 
 #
 # this global is used to indicate whether Qt bindings for python are present
-# and available for use by Lighthouse.
+# and available for use by Tenet.
 #
 
 QT_AVAILABLE = False
@@ -16,7 +16,7 @@ QT_AVAILABLE = False
 #
 #    this file was critical for retaining compatibility with Qt4 frameworks
 #    used by IDA 6.8/6.95, but it less important now. support for Qt 4 and
-#    older versions of IDA (< 7.0) were deprecated in Lighthouse v0.9.0
+#    older versions of IDA (< 7.0) were deprecated in Tenet v0.9.0
 #
 
 USING_PYQT5 = False

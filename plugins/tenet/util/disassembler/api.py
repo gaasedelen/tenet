@@ -3,7 +3,7 @@ import logging
 
 from ..qt import QT_AVAILABLE, QtGui, QtWidgets
 
-logger = logging.getLogger("Lighthouse.API")
+logger = logging.getLogger("Tenet.API")
 
 #------------------------------------------------------------------------------
 # Disassembler API
@@ -16,7 +16,7 @@ logger = logging.getLogger("Lighthouse.API")
 #
 #    by subclassing the templated classes below, the plugin can support other
 #    disassembler plaforms relatively easily. at the moment, implementing these
-#    subclasses is ~50% of the work that is required to add lighthouse support
+#    subclasses is ~50% of the work that is required to add tenet support
 #    to any given interactive disassembler.
 #
 
@@ -150,7 +150,7 @@ class DisassemblerCoreAPI(object):
         after = msgbox.sizeHint().width()
         icon_width = after - before
 
-        msgbox.setWindowTitle("Lighthouse Warning")
+        msgbox.setWindowTitle("Tenet Warning")
         msgbox.setText(text)
 
         font = msgbox.font()
@@ -461,6 +461,6 @@ class RenameHooks(object):
 
     def renamed(self, address, new_name):
         """
-        This will be hooked by Lighthouse at runtime to capture rename events.
+        This will be hooked by Tenet at runtime to capture rename events.
         """
         pass
