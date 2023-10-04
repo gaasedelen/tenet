@@ -4,11 +4,12 @@ import struct
 import weakref
 import threading
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Plugin Util
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
 PLUGIN_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
 
 def is_plugin_dev():
     """
@@ -16,20 +17,18 @@ def is_plugin_dev():
     """
     return bool(os.getenv("TENET_DEV"))
 
+
 def plugin_resource(resource_name):
     """
     Return the full path for a given plugin resource file.
     """
-    return os.path.join(
-        PLUGIN_PATH,
-        "ui",
-        "resources",
-        resource_name
-    )
+    return os.path.join(PLUGIN_PATH, "ui", "resources", resource_name)
 
-#------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 # Thread Util
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 def is_mainthread():
     """
@@ -37,41 +36,51 @@ def is_mainthread():
     """
     return isinstance(threading.current_thread(), threading._MainThread)
 
+
 def assert_mainthread(f):
     """
     A sanity decorator to ensure that a function is always called from the main thread.
     """
+
     def wrapper(*args, **kwargs):
         assert is_mainthread()
         return f(*args, **kwargs)
+
     return wrapper
+
 
 def assert_async(f):
     """
     A sanity decorator to ensure that a function is never called from the main thread.
     """
+
     def wrapper(*args, **kwargs):
         assert not is_mainthread()
         return f(*args, **kwargs)
+
     return wrapper
 
-#-----------------------------------------------------------------------------
+
+# -----------------------------------------------------------------------------
 # Python Utils
-#-----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+
 
 def chunks(lst, n):
     """
     Yield successive n-sized chunks from lst.
     """
     for i in range(0, len(lst), n):
-        yield lst[i:i + n]
+        yield lst[i : i + n]
+
 
 def hexdump(data):
     """
     Return an ascii hexdump of the given data.
     """
-    return '\n'.join([' '.join([f"{x:02X}" for x in chunk]) for chunk in chunks(data, 16)])
-        
+    return "\n".join([" ".join([f"{x:02X}" for x in chunk]) for chunk in chunks(data, 16)])
+
+
 def makedirs(path, exists_ok=True):
     """
     Create directories along a fully qualified path.
@@ -83,16 +92,19 @@ def makedirs(path, exists_ok=True):
             raise e
         if not exists_ok:
             raise e
-            
+
+
 def swap_rgb(i):
     """
     Swap a 32bit RRGGBB (integer) to BBGGRR.
     """
     return struct.unpack("<I", struct.pack(">I", i))[0] >> 8
 
-#------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 # Python Callback / Signals
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 def register_callback(callback_list, callback):
     """
@@ -111,6 +123,7 @@ def register_callback(callback_list, callback):
 
     # 'register' the callback
     callback_list.append(callback_ref)
+
 
 def notify_callback(callback_list, *args):
     """

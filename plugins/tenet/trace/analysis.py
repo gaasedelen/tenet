@@ -3,9 +3,9 @@ import collections
 
 from tenet.util.log import pmsg
 
-#-----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # analysis.py -- Trace Analysis
-#-----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 #
 #    This file should contain logic to further process, augment, optimize or
 #    annotate Tenet traces when a binary analysis framework such as IDA /
@@ -18,6 +18,7 @@ from tenet.util.log import pmsg
 #    such as function calls, returns, entry and exit to unmapped regions,
 #    service pointer annotations, and much more.
 #
+
 
 class TraceAnalysis(object):
     """
@@ -32,21 +33,21 @@ class TraceAnalysis(object):
         self.slide = None
         self._analyze()
 
-    #-------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     # Public
-    #-------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
 
     def rebase_pointer(self, address):
         """
         Return a rebased version of the given address, if one exists.
         """
         for m1, m2 in self._remapped_regions:
-            #print(f"m1 start: {m1[0]:08X} address: {address:08X} m1 end: {m1[1]:08X}")
-            #print(f"m2 start: {m2[0]:08X} address: {address:08X} m2 end: {m2[1]:08X}")
+            # print(f"m1 start: {m1[0]:08X} address: {address:08X} m1 end: {m1[1]:08X}")
+            # print(f"m2 start: {m2[0]:08X} address: {address:08X} m2 end: {m2[1]:08X}")
             if m1[0] <= address <= m1[1]:
-               return address + (m2[0] - m1[0])
+                return address + (m2[0] - m1[0])
             if m2[0] <= address <= m2[1]:
-               return address - (m2[0] - m1[0])
+                return address - (m2[0] - m1[0])
         return address
 
     def get_prev_mapped_idx(self, idx):
@@ -59,9 +60,9 @@ class TraceAnalysis(object):
         except IndexError:
             return -1
 
-    #-------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     # Analysis
-    #-------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
 
     def _analyze(self):
         """
@@ -172,7 +173,7 @@ class TraceAnalysis(object):
             #
 
             if (hit / seen) > 0.95:
-                #print(f"ASLR Slide: {k:08X} Quality: {hit/seen:0.2f} (h {hit} s {seen} e {expected})")
+                # print(f"ASLR Slide: {k:08X} Quality: {hit/seen:0.2f} (h {hit} s {seen} e {expected})")
                 slide = k
                 break
 
@@ -249,5 +250,5 @@ class TraceAnalysis(object):
                 else:
                     last_good_idx = seg_base + relative_idx
 
-        #print(f" - Unmapped Entry Points: {len(unmapped_entries)}")
+        # print(f" - Unmapped Entry Points: {len(unmapped_entries)}")
         self._unmapped_entry_points = unmapped_entries

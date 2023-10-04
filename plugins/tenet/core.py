@@ -8,9 +8,9 @@ from tenet.integration.api import disassembler
 
 logger = logging.getLogger("Tenet.Core")
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # core.py -- Plugin Core
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 #    The purpose of this file is to define a specification required by the
 #    plugin to integrate and load under a given disassembler.
@@ -18,29 +18,31 @@ logger = logging.getLogger("Tenet.Core")
 #    This is technically the 'lowest' level layer of the plugin, as it is
 #    loaded / unloaded directly by the disassembler. This means that there
 #    should be no database or user-specific data loaded into this layer.
-# 
+#
 #    Supporting additional disassemblers will require one to subclass this
 #    abstract core as part of a disassembler-specific integration layer.
 #
+
 
 class TenetCore(object):
     """
     The disassembler-wide plugin core.
     """
+
     __metaclass__ = abc.ABCMeta
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # Plugin Metadata
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
 
-    PLUGIN_NAME    = "Tenet"
+    PLUGIN_NAME = "Tenet"
     PLUGIN_VERSION = "0.2.0"
     PLUGIN_AUTHORS = "Markus Gaasedelen"
-    PLUGIN_DATE    = "2021"
+    PLUGIN_DATE = "2021"
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # Initialization / Teardown
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
 
     def load(self):
         """
@@ -58,7 +60,7 @@ class TenetCore(object):
 
         # all done, mark the core as loaded
         self.loaded = True
-        
+
         # print plugin banner
         pmsg(f"Loaded v{self.PLUGIN_VERSION} - (c) {self.PLUGIN_AUTHORS} - {self.PLUGIN_DATE}")
         logger.info("Successfully loaded plugin")
@@ -84,7 +86,7 @@ class TenetCore(object):
         self.contexts = {}
 
         # all done
-        logger.info("-"*75)
+        logger.info("-" * 75)
         logger.info("Plugin terminated")
 
     @abc.abstractmethod
@@ -101,9 +103,9 @@ class TenetCore(object):
         """
         pass
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # Disassembler / Database Context Selector
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
 
     @abc.abstractmethod
     def get_context(self, db, startup=True):
@@ -112,9 +114,9 @@ class TenetCore(object):
         """
         pass
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # UI Integration
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
 
     def _install_ui(self):
         """
@@ -206,9 +208,9 @@ class TenetCore(object):
         """
         pass
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # UI Event Handlers
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
 
     def _interactive_load_trace(self, db):
         pctx = self.get_context(db)
@@ -230,16 +232,16 @@ class TenetCore(object):
         pctx = self.get_context(db)
         pctx.interactive_prev_execution()
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # Core Actions
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
 
     def refresh_theme(self):
         """
         Refresh UI facing elements to reflect the current theme.
         """
         for pctx in self.contexts.values():
-            pass # TODO
+            pass  # TODO
 
     def check_for_update(self):
         """

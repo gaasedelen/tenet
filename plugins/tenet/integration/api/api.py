@@ -5,9 +5,9 @@ from ...util.qt import *
 
 logger = logging.getLogger("Tenet.Integration.API")
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Disassembler API
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 #    the purpose of this file is to provide an abstraction layer for the more
 #    generic disassembler APIs required by the plugin codebase. we strive to
@@ -25,10 +25,12 @@ logger = logging.getLogger("Tenet.Integration.API")
 #    dependencies required by this plugin
 #
 
+
 class DisassemblerCoreAPI(object):
     """
     An abstract implementation of the core disassembler APIs.
     """
+
     __metaclass__ = abc.ABCMeta
 
     # the name of the disassembler framework, eg 'IDA' or 'BINJA'
@@ -57,9 +59,9 @@ class DisassemblerCoreAPI(object):
     def __setitem__(self, key, value):
         self._ctxs[key] = value
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # Properties
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
 
     def version_major(self):
         """
@@ -89,9 +91,9 @@ class DisassemblerCoreAPI(object):
         """
         pass
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # Synchronization Decorators
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
 
     @staticmethod
     def execute_read(function):
@@ -119,9 +121,9 @@ class DisassemblerCoreAPI(object):
         """
         raise NotImplementedError("execute_ui() has not been implemented")
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # Disassembler Universal APIs
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
 
     @abc.abstractmethod
     def get_disassembler_user_directory(self):
@@ -162,7 +164,12 @@ class DisassemblerCoreAPI(object):
         text_width = fm.size(0, text).width()
 
         # don't ask...
-        spacer = QtWidgets.QSpacerItem(int(text_width*1.1 + icon_width), 0, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
+        spacer = QtWidgets.QSpacerItem(
+            int(text_width * 1.1 + icon_width),
+            0,
+            QtWidgets.QSizePolicy.Minimum,
+            QtWidgets.QSizePolicy.Expanding,
+        )
         layout = msgbox.layout()
         layout.addItem(spacer, layout.rowCount(), 0, 1, layout.columnCount())
         msgbox.setLayout(layout)
@@ -177,9 +184,9 @@ class DisassemblerCoreAPI(object):
         """
         pass
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # UI APIs
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
 
     @abc.abstractmethod
     def create_dockable(self, dockable_name, widget):
@@ -188,9 +195,9 @@ class DisassemblerCoreAPI(object):
         """
         pass
 
-    #------------------------------------------------------------------------------
+    # ------------------------------------------------------------------------------
     # WaitBox API
-    #------------------------------------------------------------------------------
+    # ------------------------------------------------------------------------------
 
     def show_wait_box(self, text, modal=True):
         """
@@ -214,23 +221,26 @@ class DisassemblerCoreAPI(object):
         assert QT_AVAILABLE, "This function can only be used in a Qt runtime"
         self._waitbox.set_text(text)
 
-#------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 # Disassembler Contextual API
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 class DisassemblerContextAPI(object):
     """
     An abstract implementation of database/contextual disassembler APIs.
     """
+
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
     def __init__(self, dctx):
         self.dctx = dctx
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # Properties
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
 
     @abc.abstractproperty
     def busy(self):
@@ -239,9 +249,9 @@ class DisassemblerContextAPI(object):
         """
         pass
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # API Shims
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
 
     def is_64bit(self):
         """

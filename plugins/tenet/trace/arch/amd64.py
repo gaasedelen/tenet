@@ -2,6 +2,7 @@ class ArchAMD64:
     """
     AMD64 CPU Architecture Definition.
     """
+
     MAGIC = 0x41424344
 
     POINTER_SIZE = 8
@@ -9,8 +10,7 @@ class ArchAMD64:
     IP = "RIP"
     SP = "RSP"
 
-    REGISTERS = \
-    [
+    REGISTERS = [
         "RAX",
         "RBX",
         "RCX",
@@ -27,5 +27,5 @@ class ArchAMD64:
         "R13",
         "R14",
         "R15",
-        "RIP"
+        "RIP",
     ]

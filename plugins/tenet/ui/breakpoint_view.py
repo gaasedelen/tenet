@@ -5,15 +5,18 @@
 
 from tenet.util.qt import *
 
+
 class BreakpointDock(QtWidgets.QDockWidget):
     """
     Dockable wrapper of a Breakpoint view.
     """
+
     def __init__(self, view, parent=None):
         super(BreakpointDock, self).__init__(parent)
         self.setAllowedAreas(QtCore.Qt.AllDockWidgetAreas)
         self.setWindowTitle("Breakpoints")
         self.setWidget(view)
+
 
 class BreakpointView(QtWidgets.QWidget):
     """
@@ -25,7 +28,7 @@ class BreakpointView(QtWidgets.QWidget):
         self.controller = controller
         self.model = model
         self._init_ui()
-    
+
     def _init_ui(self):
         self.setMinimumHeight(100)
 
@@ -42,4 +45,3 @@ class BreakpointView(QtWidgets.QWidget):
         self._table.insertColumn(2)
         self._table.insertColumn(3)
         self._table.setHorizontalHeaderLabels(["Type", "Enabled", "Address", "Delete"])
-

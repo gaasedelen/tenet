@@ -3,9 +3,9 @@ from tenet.types import *
 from tenet.util.qt.util import copy_to_clipboard
 from tenet.integration.api import DockableWindow
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # hex.py -- Hex Dump Controller
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 #    The purpose of this file is to house the 'headless' components of a
 #    basic hex dump window and its underlying functionality. This is split
@@ -14,6 +14,7 @@ from tenet.integration.api import DockableWindow
 #    This provides much of the core logic behind both the memory and stack
 #    views used by the plugin.
 #
+
 
 class HexController(object):
     """
@@ -44,7 +45,7 @@ class HexController(object):
             return
 
         # the UI has already been created, and is also visible. nothing to do
-        if (self.dockable and self.dockable.visible):
+        if self.dockable and self.dockable.visible:
             return
 
         #
@@ -63,7 +64,7 @@ class HexController(object):
 
         if self.dockable:
             new_dockable.copy_dock_position(self.dockable)
-        elif (target or position):
+        elif target or position:
             new_dockable.set_dock_position(target, position)
 
         # make the dockable/widget visible
@@ -76,7 +77,7 @@ class HexController(object):
         """
 
         # if there is no view/dockable, then there's nothing to try and hide
-        if not(self.view and self.dockable):
+        if not (self.view and self.dockable):
             return
 
         # hide the dockable, and drop references to the widgets
@@ -122,7 +123,7 @@ class HexController(object):
 
         self.model.address = address
 
-        #self.reset_selection(0)
+        # self.reset_selection(0)
         self.refresh_memory()
 
     def set_data_size(self, num_bytes):
@@ -138,7 +139,7 @@ class HexController(object):
         """
         assert end_address > start_address
         if not self.reader:
-            return ''
+            return ""
 
         # fetch memory for the selected region
         num_bytes = end_address - start_address
@@ -152,7 +153,7 @@ class HexController(object):
             else:
                 output.append("??")
 
-        byte_string = ' '.join(output)
+        byte_string = " ".join(output)
         copy_to_clipboard(byte_string)
 
         return byte_string
@@ -192,9 +193,9 @@ class HexController(object):
         """
         self.model.fade_address = address
 
-    #-------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     # Callbacks
-    #-------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
 
     def _idx_changed(self, idx):
         """
@@ -213,6 +214,7 @@ class HexController(object):
             return
 
         self.view.refresh()
+
 
 class HexModel(object):
     """
@@ -249,9 +251,9 @@ class HexModel(object):
         # pinned memory / breakpoint selections
         self._pinned_selections = []
 
-    #----------------------------------------------------------------------
+    # ----------------------------------------------------------------------
     # Properties
-    #----------------------------------------------------------------------
+    # ----------------------------------------------------------------------
 
     @property
     def memory_breakpoints(self):
@@ -280,7 +282,7 @@ class HexModel(object):
             raise ValueError("Bytes per line must be a multiple of display format type")
 
         self._num_bytes_per_line = width
-        #self._refresh_view_settings()
+        # self._refresh_view_settings()
 
     @property
     def hex_format(self):
@@ -291,7 +293,7 @@ class HexModel(object):
         if value == self._hex_format:
             return
         self._hex_format = value
-        #self.refresh()
+        # self.refresh()
 
     @property
     def aux_format(self):
@@ -302,4 +304,4 @@ class HexModel(object):
         if value == self._aux_format:
             return
         self._aux_format = value
-        #self.refresh()
+        # self.refresh()
