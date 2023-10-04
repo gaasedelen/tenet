@@ -2,11 +2,13 @@ from .shim import *
 from .util import get_dpi_scale
 
 import logging
+
 logger = logging.getLogger("Tenet.Qt.WaitBox")
 
-#--------------------------------------------------------------------------
+# --------------------------------------------------------------------------
 # Qt WaitBox
-#--------------------------------------------------------------------------
+# --------------------------------------------------------------------------
+
 
 class WaitBox(QtWidgets.QDialog):
     """
@@ -41,28 +43,22 @@ class WaitBox(QtWidgets.QDialog):
         qta = QtCore.QCoreApplication.instance()
         qta.processEvents()
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # Initialization - UI
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
 
     def _ui_init(self):
         """
         Initialize UI elements.
         """
-        self.setWindowFlags(
-            self.windowFlags() & ~QtCore.Qt.WindowContextHelpButtonHint
-        )
-        self.setWindowFlags(
-            self.windowFlags() | QtCore.Qt.MSWindowsFixedSizeDialogHint
-        )
-        self.setWindowFlags(
-            self.windowFlags() & ~QtCore.Qt.WindowCloseButtonHint
-        )
+        self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowContextHelpButtonHint)
+        self.setWindowFlags(self.windowFlags() | QtCore.Qt.MSWindowsFixedSizeDialogHint)
+        self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowCloseButtonHint)
 
         # configure the main widget / form
         self.setSizeGripEnabled(False)
         self.setModal(True)
-        self._dpi_scale = get_dpi_scale()*5.0
+        self._dpi_scale = get_dpi_scale() * 5
 
         # initialize abort button
         self._abort_button = QtWidgets.QPushButton("Cancel")
@@ -86,12 +82,9 @@ class WaitBox(QtWidgets.QDialog):
             self._abort_button.clicked.connect(self._abort)
             v_layout.addWidget(self._abort_button)
 
-        v_layout.setSpacing(self._dpi_scale*3)
+        v_layout.setSpacing(self._dpi_scale * 3)
         v_layout.setContentsMargins(
-            self._dpi_scale*5,
-            self._dpi_scale,
-            self._dpi_scale*5,
-            self._dpi_scale
+            self._dpi_scale * 5, self._dpi_scale, self._dpi_scale * 5, self._dpi_scale
         )
 
         # scale widget dimensions based on DPI

@@ -4,6 +4,7 @@ from tenet.types import BreakpointType
 from tenet.util.qt import *
 from tenet.integration.api import disassembler
 
+
 class RegisterView(QtWidgets.QWidget):
     """
     A container for the the widgets that make up the Registers view.
@@ -33,8 +34,8 @@ class RegisterView(QtWidgets.QWidget):
         self.reg_area.refresh()
         self.idx_shell.update()
 
-class TimestampShell(QtWidgets.QWidget):
 
+class TimestampShell(QtWidgets.QWidget):
     def __init__(self, controller, model, parent=None):
         super(TimestampShell, self).__init__(parent)
         self.model = model
@@ -52,13 +53,14 @@ class TimestampShell(QtWidgets.QWidget):
 
         # layout
         layout = QtWidgets.QHBoxLayout(self)
-        #layout.setContentsMargins(5, 0, 5, 0)
+        # layout.setContentsMargins(5, 0, 5, 0)
         layout.setContentsMargins(5, 0, 0, 5)
         layout.addWidget(self.head)
         layout.addWidget(self.shell)
 
     def refresh(self):
         self.shell.setText(f"{self.model.idx:,}")
+
 
 class TimestampLine(QtWidgets.QLineEdit):
     def __init__(self, model, controller, parent=None):
@@ -81,10 +83,12 @@ class TimestampLine(QtWidgets.QLineEdit):
     def _evaluate(self):
         self.controller.evaluate_expression(self.text())
 
+
 class RegisterArea(QtWidgets.QAbstractScrollArea):
     """
     A Qt-based CPU register view.
     """
+
     def __init__(self, controller, model, parent=None):
         super(RegisterArea, self).__init__(parent)
         self.pctx = controller.pctx
@@ -96,7 +100,7 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
         self.setFont(font)
 
         fm = QtGui.QFontMetricsF(font)
-        self._char_width = fm.width('9')
+        self._char_width = fm.width("9")
         self._char_height = fm.height()
 
         # default to fit roughly 50 printable characters
@@ -119,7 +123,9 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
 
     def sizeHint(self):
         width = self._default_width
-        height = (len(self._reg_fields) + 2) * self._char_height # +2 for line break before IP, and after IP
+        height = (
+            len(self._reg_fields) + 2
+        ) * self._char_height  # +2 for line break before IP, and after IP
         return QtCore.QSize(width, height)
 
     def _init_ctx_menu(self):
@@ -150,8 +156,8 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
 
         # compute rects for the average reg labels and values
         fm = QtGui.QFontMetricsF(self.font())
-        name_size = fm.boundingRect('X'*common_count).size()
-        value_size = fm.boundingRect('0' * (self.model.arch.POINTER_SIZE * 2)).size()
+        name_size = fm.boundingRect("X" * common_count).size()
+        value_size = fm.boundingRect("0" * (self.model.arch.POINTER_SIZE * 2)).size()
         arrow_size = (int(value_size.height() * 0.70) & 0xFE) + 1
 
         # pre-compute the position of each register in the window
@@ -163,7 +169,7 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
                 y += self._char_height
 
             name_rect = QtCore.QRect(0, 0, name_size.width(), name_size.height())
-            name_rect.moveBottomLeft(QtCore.QPoint(name_x, y))
+            name_rect.moveBottomLeft(QtCore.QPoint(int(name_x), int(y)))
 
             prev_rect = QtCore.QRect(0, 0, arrow_size, arrow_size)
             next_rect = QtCore.QRect(0, 0, arrow_size, arrow_size)
@@ -175,7 +181,7 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
 
             value_x = prev_x + prev_rect.width() + self._char_width
             value_rect = QtCore.QRect(0, 0, value_size.width(), value_size.height())
-            value_rect.moveBottomLeft(QtCore.QPoint(value_x, y))
+            value_rect.moveBottomLeft(QtCore.QPoint(int(value_x), int(y)))
 
             next_x = value_x + value_size.width() + self._char_width
             next_rect.moveCenter(name_rect.center())
@@ -448,7 +454,7 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
             if reg_value is None:
                 rendered_value = "?" * reg_nibbles
             else:
-                rendered_value = f'%0{reg_nibbles}X' % reg_value
+                rendered_value = f"%0{reg_nibbles}X" % reg_value
 
             # color register if its value changed as a result of T-1 (previous instr)
             if reg_name in self.model.delta_trace:
@@ -518,9 +524,9 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
         path.lineTo(top_x, top_y)
 
         # dev / debug helper
-        #painter.setPen(QtCore.Qt.green)
-        #painter.setBrush(QtGui.QBrush(QtGui.QColor("white")))
-        #painter.drawRect(rect)
+        # painter.setPen(QtCore.Qt.green)
+        # painter.setBrush(QtGui.QBrush(QtGui.QColor("white")))
+        # painter.drawRect(rect)
 
         # paint the defined triangle
         # TODO: don't hardcode colors
@@ -532,9 +538,10 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
             else:
                 painter.setBrush(self.pctx.palette.arrow_prev)
         else:
-                painter.setBrush(self.pctx.palette.arrow_idle)
+            painter.setBrush(self.pctx.palette.arrow_idle)
 
         painter.drawPath(path)
+
 
 class RegisterField(object):
     def __init__(self, name, name_rect, value_rect, arrow_rects):
