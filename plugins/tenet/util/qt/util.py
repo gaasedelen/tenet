@@ -59,7 +59,7 @@ def get_dpi_scale():
     fm = QtGui.QFontMetricsF(font)
 
     # xHeight is expected to be 40.0 at normal DPI
-    return fm.height() / 173.0
+    return int(fm.height() / 173.0)
 
 
 def normalize_font(font_size):

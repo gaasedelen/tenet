@@ -57,6 +57,10 @@ uint32_t* get_cpu_regs(void)
 
 FILE* g_out = NULL;
 
+// Used to filter irrelevant PCs
+uint64_t g_pc_low = 0;
+uint64_t g_pc_high = 0xFFFFFFFFFFFFFFFF;
+
 uint32_t* g_cpu = NULL;
 uint32_t g_cpu_prev[NUM_REG] = {};
 
@@ -72,6 +76,10 @@ size_t g_mem_log_count = 0;
 
 static void vcpu_insn_exec(unsigned int cpu_index, void* udata)
 {
+    const uint64_t pc = GPOINTER_TO_UINT(udata);
+    if (pc > g_pc_high || pc < g_pc_low)
+        return;
+
     int length = 0;
 
     if (g_cpu[R0] != g_cpu_prev[R0])
@@ -103,7 +111,6 @@ static void vcpu_insn_exec(unsigned int cpu_index, void* udata)
     if (g_cpu[SP] != g_cpu_prev[SP])
         length += sprintf(reg_scratch + length, "SP=%X,", g_cpu[SP]);
 
-    uint64_t pc = GPOINTER_TO_UINT(udata);
     length += sprintf(reg_scratch + length, "PC=%lX", pc);
 
     for (int i = 0; i < g_mem_log_count; i++) {
@@ -147,6 +154,10 @@ static void vcpu_mem_access(unsigned int cpu_index,
                             uint64_t vaddr,
                             void* udata)
 {
+    const uint64_t pc = GPOINTER_TO_UINT(udata);
+    if (pc > g_pc_high || pc < g_pc_low)
+        return;
+
     struct qemu_plugin_hwaddr* hwaddr = qemu_plugin_get_hwaddr(mem_info, vaddr);
     if (qemu_plugin_hwaddr_is_io(hwaddr))
         return;
@@ -192,6 +203,14 @@ QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
         filepath = argv[0];
     else
         filepath = (char*)"trace.log";
+
+    if (argc == 3) {
+        const char hex_prefix[] = "0x";
+        g_pc_low = strtoull(!strcmp(hex_prefix, argv[1]) ? argv[1] + 2 : argv[1], NULL, 16);
+        g_pc_high = strtoull(!strcmp(hex_prefix, argv[2]) ? argv[2] + 2 : argv[2], NULL, 16);
+
+        printf("Filtering PCs between 0x%lX and 0x%lX\n", g_pc_low, g_pc_high);
+    }
 
     printf("Writing Tenet trace to %s\n", filepath);
     g_out = fopen(filepath, "w");
