@@ -523,8 +523,8 @@ class TraceFile(object):
             self.arch = ArchArm32()
         elif ArchX86.MAGIC == magic:
             self.arch = ArchX86()
-
-        raise ValueError(f"Invalid arch magic 0x{magic:08X}")
+        else:
+            raise ValueError(f"Invalid arch magic 0x{magic:08X}")
 
     def _fetch_hash(self, filepath):
         """
