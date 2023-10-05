@@ -10,6 +10,8 @@ import binascii
 import itertools
 import collections
 
+from typing import List
+
 # -----------------------------------------------------------------------------
 # file.py -- Trace File
 # -----------------------------------------------------------------------------
@@ -267,7 +269,7 @@ class TraceFile(object):
         self.mem_masks = None
 
         #
-        # register data is stored in a contiguos blob for each trace segment.
+        # register data is stored in a contiguous blob for each trace segment.
         #
         # for each step / 'instruction' of the trace, we create a 32bit
         # register mask that defines which registers changed. each bit in
@@ -293,7 +295,7 @@ class TraceFile(object):
         # for more information, look at the TraceSegments class
         #
 
-        self.segments = []
+        self.segments: List[TraceSegment] = []
 
         # the number of timestamps / 'instructions' for each trace segment
         self.segment_length = DEFAULT_SEGMENT_LENGTH

@@ -263,21 +263,6 @@ class RegisterController(object):
             return
         self.view.refresh()
 
-    def _idx_changed(self, idx):
-        """
-        The trace position has been changed.
-        """
-        self.model.idx = idx
-        self.set_registers(self.reader.registers, self.reader.trace.get_reg_delta(idx).keys())
-
-    def _breakpoints_changed(self):
-        """
-        Handle breakpoints changed event.
-        """
-        if not self.view:
-            return
-        self.view.refresh()
-
 
 class RegistersModel(object):
     """

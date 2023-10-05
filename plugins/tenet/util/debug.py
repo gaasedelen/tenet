@@ -18,3 +18,21 @@ def timeit(method):
         return result
 
     return timed
+
+
+class TimeIt:
+    def __init__(self, name):
+        self.name = name
+        self.start = 0.0
+        self.end = 0.0
+
+    def __enter__(self):
+        self.start = time.time()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.end = time.time()
+
+        print(f"{self.name} took {self.end - self.start} seconds")
+
+        return True

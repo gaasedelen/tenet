@@ -222,19 +222,21 @@ class IDAContextAPI(DisassemblerContextAPI):
 
             # fetch code segments
             seg = ida_segment.getseg(seg_address)
-            if seg.sclass != ida_segment.SEG_CODE:
+            if ida_segment.get_segm_class(seg) != "CODE":
                 continue
 
             current_address = seg_address
             end_address = seg.end_ea
 
+            # print(f"Segment {seg.start_ea:08X} --> {seg.end_ea:08X} CODE")
+
             # save the address of each instruction in the segment
             while current_address < end_address:
                 current_address = ida_bytes.next_head(current_address, end_address)
+                # print(f"{hex(current_address)} -> {ida_bytes.get_flags(current_address)}")
                 if ida_bytes.is_code(ida_bytes.get_flags(current_address)):
                     instruction_addresses.append(current_address)
 
-        #    print(f"Seg {seg.start_ea:08X} --> {seg.end_ea:08X} CODE")
         # print(f" -- {len(instruction_addresses):,} instructions found")
 
         return instruction_addresses

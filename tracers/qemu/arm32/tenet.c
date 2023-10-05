@@ -110,6 +110,8 @@ static void vcpu_insn_exec(unsigned int cpu_index, void* udata)
         length += sprintf(reg_scratch + length, "R12=%X,", g_cpu[R12]);
     if (g_cpu[SP] != g_cpu_prev[SP])
         length += sprintf(reg_scratch + length, "SP=%X,", g_cpu[SP]);
+    if (g_cpu[LR] != g_cpu_prev[LR])
+        length += sprintf(reg_scratch + length, "LR=%X,", g_cpu[LR]);
 
     length += sprintf(reg_scratch + length, "PC=%lX", pc);
 
@@ -135,7 +137,7 @@ static void vcpu_insn_exec(unsigned int cpu_index, void* udata)
 
         // Third way. If it doesn't work, you're out of luck.
         cpu_memory_rw_debug(
-            qemu_get_cpu(cpu_index), entry->ram_addr, (char*)access_data, access_size, 0);
+            qemu_get_cpu(cpu_index), entry->virt_addr, (char*)access_data, access_size, 0);
 
         for (int j = 0; j < access_size; j++)
             length += sprintf(reg_scratch + length, "%02X", access_data[j]);

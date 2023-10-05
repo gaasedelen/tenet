@@ -1696,7 +1696,7 @@ class TraceReader(object):
 
     def get_memory(self, address, length, idx=None):
         """
-        Return the requested memeory.
+        Return the requested memory.
 
         If a timestamp (idx) is provided, that will be used instead of the current timestamp.
         """
