@@ -498,7 +498,7 @@ class TraceBar(QtWidgets.QWidget):
         y += self._cell_border * relative_idx  # cell top border
 
         # return the y position of the cell corresponding to the given timestamp
-        return y
+        return int(y)
 
     def _pos2idx(self, y):
         """
