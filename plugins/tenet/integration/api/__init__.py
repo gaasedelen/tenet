@@ -1,6 +1,6 @@
-#--------------------------------------------------------------------------
+# --------------------------------------------------------------------------
 # Disassembler API Selector
-#--------------------------------------------------------------------------
+# --------------------------------------------------------------------------
 #
 #    this file will select and load the shimmed disassembler API for the
 #    appropriate (current) disassembler platform.
@@ -10,12 +10,13 @@
 
 disassembler = None
 
-#--------------------------------------------------------------------------
+# --------------------------------------------------------------------------
 # IDA API Shim
-#--------------------------------------------------------------------------
+# --------------------------------------------------------------------------
 
 if disassembler == None:
     from .ida_api import IDACoreAPI, IDAContextAPI, DockableWindow
+
     disassembler = IDACoreAPI()
     DisassemblerContextAPI = IDAContextAPI
 
@@ -23,7 +24,7 @@ if disassembler == None:
 ## Binary Ninja API Shim
 ##--------------------------------------------------------------------------
 #
-#if disassembler == None:
+# if disassembler == None:
 #    try:
 #        from .binja_api import BinjaCoreAPI, BinjaContextAPI
 #        disassembler = BinjaCoreAPI()
@@ -31,10 +32,9 @@ if disassembler == None:
 #    except ImportError:
 #        pass
 
-#--------------------------------------------------------------------------
+# --------------------------------------------------------------------------
 # Unknown Disassembler
-#--------------------------------------------------------------------------
+# --------------------------------------------------------------------------
 
 if disassembler == None:
     raise NotImplementedError("Unknown or unsupported disassembler!")
-

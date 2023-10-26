@@ -9,9 +9,9 @@ from tenet.integration.ida_integration import TenetIDA
 
 logger = logging.getLogger("Tenet.IDA.Loader")
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # IDA Plugin Loader
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 #    This file contains a stub 'plugin' class for the plugin as required by
 #    IDA Pro. Practically speaking, there should be little to *no* logic placed
@@ -30,11 +30,13 @@ logger = logging.getLogger("Tenet.IDA.Loader")
 #    There should be virtually no reason for you to modify this file.
 #
 
+
 def PLUGIN_ENTRY():
     """
     Required plugin entry point for IDAPython Plugins.
     """
     return TenetIDAPlugin()
+
 
 class TenetIDAPlugin(ida_idaapi.plugin_t):
     """
@@ -54,9 +56,9 @@ class TenetIDAPlugin(ida_idaapi.plugin_t):
     wanted_name = "Tenet"
     wanted_hotkey = ""
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # IDA Plugin Overloads
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
 
     def init(self):
         """
@@ -90,7 +92,7 @@ class TenetIDAPlugin(ida_idaapi.plugin_t):
         logger.debug("IDA term started...")
 
         start = time.time()
-        logger.debug("-"*50)
+        logger.debug("-" * 50)
 
         try:
             self.core.unload()
@@ -99,7 +101,6 @@ class TenetIDAPlugin(ida_idaapi.plugin_t):
             logger.exception("Failed to cleanly unload Tenet from IDA.")
 
         end = time.time()
-        logger.debug("-"*50)
+        logger.debug("-" * 50)
 
-        logger.debug("IDA term done... (%.3f seconds...)" % (end-start))
-
+        logger.debug("IDA term done... (%.3f seconds...)" % (end - start))

@@ -22,7 +22,7 @@ Special thanks to [QIRA](https://github.com/geohot/qira) / [geohot](https://twit
 Tenet is a cross-platform (Windows, macOS, Linux) Python 3 plugin. It takes zero third party dependencies, making the code both portable and easy to install.
 
 1. From your disassembler's python console, run the following command to find its plugin directory:
-   - **IDA Pro**: `import idaapi, os; os.path.join(idaapi.get_user_idadir(), "plugins")`
+   * **IDA Pro**: `import idaapi, os; os.path.join(idaapi.get_user_idadir(), "plugins")`
 
 2. Copy the contents of this repository's `/plugins/` folder to the listed directory.
 3. Restart your disassembler.
@@ -41,13 +41,13 @@ As this is the initial release, Tenet only accepts simple human-readable text tr
 
 ## Bidirectional Exploration
 
-While using Tenet, the plugin will 'paint' trails to indicate the flow of execution forwards (blue) and backwards (red) from your present position in the active execution trace. 
+While using Tenet, the plugin will 'paint' trails to indicate the flow of execution forwards (blue) and backwards (red) from your present position in the active execution trace.
 
 <p align="center">
 <img alt="Tenet trails" src="screenshots/tenet_trails.gif"/>
 </p>
 
-To `step` forwards or backwards through time, you simply *scroll while hovering over the timeline* on the right side of the disassembler. To `step over` function calls, hold `SHIFT` while scrolling. 
+To `step` forwards or backwards through time, you simply *scroll while hovering over the timeline* on the right side of the disassembler. To `step over` function calls, hold `SHIFT` while scrolling.
 
 ## Trace Timeline
 
@@ -57,7 +57,7 @@ The trace timeline will be docked on the right side of the disassembler. This wi
 <img alt="Zooming in on the trace timeline" src="screenshots/trace_zoom.gif"/>
 </p>
 
-By *clicking and dragging across the timeline*, it is possible to zoom in on a specific section of the execution trace. This action can be repeated any number of times to reach the desired granularity. 
+By *clicking and dragging across the timeline*, it is possible to zoom in on a specific section of the execution trace. This action can be repeated any number of times to reach the desired granularity.
 
 ## Execution Breakpoints
 
@@ -69,13 +69,13 @@ Double clicking the instruction pointer in the registers window will highlight i
 
 To jump between executions, *scroll up or down while hovering the highlighted instruction pointer*.
 
-Additionally, you can *right click in the disassembly listing* and select one of the navigation-based menu entries to quickly seek to the execution of an instruction of interest. 
+Additionally, you can *right click in the disassembly listing* and select one of the navigation-based menu entries to quickly seek to the execution of an instruction of interest.
 
 <p align="center">
 <img alt="Seeking to the first execution of an instruction" src="screenshots/seek_to_first.gif"/>
 </p>
 
-IDA's native `F2` hotkey can also be used to set breakpoints on arbitrary instructions. 
+IDA's native `F2` hotkey can also be used to set breakpoints on arbitrary instructions.
 
 ## Memory Breakpoints
 
@@ -93,7 +93,7 @@ Memory breakpoints can be navigated using the same technique described for execu
 <img alt="Memory seeking" src="screenshots/memory_seek.png"/>
 </p>
 
-To navigate the memory view to an arbitrary address, click onto the memory view and hit `G` to enter either an address or database symbol to seek the view to. 
+To navigate the memory view to an arbitrary address, click onto the memory view and hit `G` to enter either an address or database symbol to seek the view to.
 
 ## Region Breakpoints
 
@@ -103,13 +103,13 @@ It is possible to set a memory breakpoint across a region of memory by highlight
 <img alt="Memory region access breakpoints" src="screenshots/region_breakpoints.gif"/>
 </p>
 
-As with normal memory breakpoints, hovering the region and *scrolling* can used to traverse between the accesses made to the selected region of memory. 
+As with normal memory breakpoints, hovering the region and *scrolling* can used to traverse between the accesses made to the selected region of memory.
 
 ## Register Seeking
 
-In reverse engineering, it's pretty common to encounter situations where you ask yourself *"Which instruction set this register to its current value?"* 
+In reverse engineering, it's pretty common to encounter situations where you ask yourself *"Which instruction set this register to its current value?"*
 
-Using Tenet, you can seek backwards to that instruction in a single click. 
+Using Tenet, you can seek backwards to that instruction in a single click.
 
 <p align="center">
 <img alt="Seeking to the previous register write" src="screenshots/seek_to_register.gif"/>
@@ -119,7 +119,7 @@ Seeking backwards is by far the most common direction to navigate across registe
 
 ## Timestamp Shell
 
-A simple 'shell' is provided to navigate to specific timestamps in the trace. Pasting (or typing...) a timestamp into the shell with or without commas will suffice. 
+A simple 'shell' is provided to navigate to specific timestamps in the trace. Pasting (or typing...) a timestamp into the shell with or without commas will suffice.
 
 <p align="center">
 <img alt="Seeking around the trace using the timestamp shell" src="screenshots/idx_shell.gif"/>
@@ -147,7 +147,7 @@ Tenet will remember your theme preference for future loads and uses.
 
 #### Q: What trace architectures does Tenet support loading?
 
-* *A: Only x86 and AMD64, but the codebase is almost entirely architecture agnostic.*
+* *A: x86, AMD64 and Arm32, but the codebase is almost entirely architecture agnostic.*
 
 #### Q: How big of a trace file can Tenet load / navigate?
 
@@ -164,11 +164,11 @@ Tenet will remember your theme preference for future loads and uses.
 #### Q: Memory in my trace is changing, but there are no writes to the region. Is this a bug!?
 
 * *A: Your log file may not have captured all memory writes. For example, usermode DBI generally do not get a memory callback for external writes to process memory. This is most common when reading from a file, or from socket -- it is the kernel that writes memory into your designated usermode buffer, making the event invisible to traditional instrumentation.*
-	* Microsoft TTD generally exhibits the same behavior, it's tricky to solve without modeling syscalls. 
+  * Microsoft TTD generally exhibits the same behavior, it's tricky to solve without modeling syscalls.
 
-#### Q: Will this be ported to Binary Ninja / Ghidra / ... ? 
+#### Q: Will this be ported to Binary Ninja / Ghidra / ... ?
 
-* *A: Possibly, but not anytime soon (unless there is __significant__ incentive). As a research oriented project, the driving motivation is on developing novel strategies to organize and explore program execution -- not porting them.*
+* *A: Possibly, but not anytime soon (unless there is **significant** incentive). As a research oriented project, the driving motivation is on developing novel strategies to organize and explore program execution -- not porting them.*
 
 #### Q: My organization would like to support this project, how can we help?
 
@@ -186,7 +186,7 @@ Time and ~~motivation~~ funding permitting, future work may include:
 * Trace cartography, improved summarization and representation of trace geography
 * Make the 'cpu architecture' selection/detection slightly less hardcoded
 * More out-of-the-box tracing bridges, DynamoRIO, TTD, RR, QEMU, Bochs, ...
-* Support for Hex-Rays / decompiled views (besides basic view sync) 
+* Support for Hex-Rays / decompiled views (besides basic view sync)
 * Improved workflow for automatically loading or iterating on traces
 * Differential analysis, high level 'trace diffing'
 * Better navigation and breakdown of threads, quantum's

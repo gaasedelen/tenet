@@ -5,9 +5,10 @@ import logging
 from .misc import makedirs, is_plugin_dev
 from ..integration.api import disassembler
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Log / Print helpers
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 def pmsg(message):
     """
@@ -23,34 +24,36 @@ def pmsg(message):
     else:
         logger.info(message)
 
+
 def get_log_dir():
     """
     Return the plugin log directory.
     """
-    log_directory = os.path.join(
-        disassembler.get_disassembler_user_directory(),
-        "tenet_logs"
-    )
+    log_directory = os.path.join(disassembler.get_disassembler_user_directory(), "tenet_logs")
     return log_directory
+
 
 def logging_started():
     """
     Check if logging has been started.
     """
-    return 'logger' in globals()
+    return "logger" in globals()
 
-#------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 # Logger Proxy
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 class LoggerProxy(object):
     """
     Fake file-like stream object that redirects writes to a logger instance.
     """
+
     def __init__(self, logger, stream, log_level=logging.INFO):
-        self._logger    = logger
+        self._logger = logger
         self._log_level = log_level
-        self._stream    = stream
+        self._stream = stream
 
     def write(self, buf):
         for line in buf.rstrip().splitlines():
@@ -64,11 +67,14 @@ class LoggerProxy(object):
     def isatty(self):
         pass
 
-#------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 # Initialize Logging
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
 MAX_LOGS = 10
+
+
 def cleanup_log_directory(log_directory):
     """
     Retain only the last 15 logs.
@@ -100,6 +106,7 @@ def cleanup_log_directory(log_directory):
             logger.error("Failed to delete log %s" % filetimes[log_time])
             logger.error(e)
 
+
 def start_logging():
     global logger
 
@@ -129,14 +136,14 @@ def start_logging():
     # config the logger
     logging.basicConfig(
         filename=log_path,
-        format='%(asctime)s | %(name)28s | %(levelname)7s: %(message)s',
-        datefmt='%m-%d-%Y %H:%M:%S',
-        level=logging.DEBUG
+        format="%(asctime)s | %(name)28s | %(levelname)7s: %(message)s",
+        datefmt="%m-%d-%Y %H:%M:%S",
+        level=logging.DEBUG,
     )
 
     # proxy STDOUT/STDERR to the log files too
-    stdout_logger = logging.getLogger('Tenet.STDOUT')
-    stderr_logger = logging.getLogger('Tenet.STDERR')
+    stdout_logger = logging.getLogger("Tenet.STDOUT")
+    stderr_logger = logging.getLogger("Tenet.STDERR")
     sys.stdout = LoggerProxy(stdout_logger, sys.stdout, logging.INFO)
     sys.stderr = LoggerProxy(stderr_logger, sys.stderr, logging.ERROR)
 
@@ -145,9 +152,11 @@ def start_logging():
 
     return logger
 
-#------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 # Log Helpers
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 def log_config_warning(self, logger, section, field):
     logger.warning("Config missing field '%s' in section '%s", field, section)

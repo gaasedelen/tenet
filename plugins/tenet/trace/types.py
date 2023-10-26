@@ -1,17 +1,18 @@
 import array
 
+
 class TraceMemory(object):
     """
     A Trace Memory Buffer.
 
-    TODO: this is pretty trash / overraught and should be refactored. also 
-    this can probably be moved into tenet.types? 
+    TODO: this is pretty trash / overraught and should be refactored. also
+    this can probably be moved into tenet.types?
     """
 
     def __init__(self, address, length):
         self.address = address
-        self.data = array.array('B', [0]) * length
-        self.mask = array.array('B', [0]) * length
+        self.data = array.array("B", [0]) * length
+        self.mask = array.array("B", [0]) * length
 
     def __contains__(self, address):
         if self.address <= address < self.end_address:
@@ -38,10 +39,10 @@ class TraceMemory(object):
         #
 
         if new_length > self.length:
-            new_data = array.array('B', [0]) * new_length
-            new_mask = array.array('B', [0]) * new_length
-            new_data[:self.length] = self.data[:self.length]
-            new_mask[:self.length] = self.mask[:self.length]
+            new_data = array.array("B", [0]) * new_length
+            new_mask = array.array("B", [0]) * new_length
+            new_data[: self.length] = self.data[: self.length]
+            new_mask[: self.length] = self.mask[: self.length]
             self.data = new_data
             self.mask = new_mask
 
@@ -69,16 +70,16 @@ class TraceMemory(object):
         this_length_left = self.length - this_start
         overlapped_length = min(other_length_left, this_length_left)
 
-        #print('-'*50)
-        #print(f" Self Addr 0x{self.address:08X}, Len {self.length}")
-        #print(f"Other Addr 0x{other.address:08X}, Len {other.length}")
-        #print(f" Overlapping Bytes: {overlapped_length}, self start {this_start}, other start {other_start}")
+        # print('-'*50)
+        # print(f" Self Addr 0x{self.address:08X}, Len {self.length}")
+        # print(f"Other Addr 0x{other.address:08X}, Len {other.length}")
+        # print(f" Overlapping Bytes: {overlapped_length}, self start {this_start}, other start {other_start}")
 
         for i in range(overlapped_length):
-            if other.mask[other_start+i]:
-                self.data[this_start+i] = other.data[other_start+i]
-                self.mask[this_start+i] = 0xFF
+            if other.mask[other_start + i]:
+                self.data[this_start + i] = other.data[other_start + i]
+                self.mask[this_start + i] = 0xFF
 
     def __str__(self):
         output = ["%02X" % byte if mask else "??" for byte, mask in zip(self.data, self.mask)]
-        return ' '.join(output)
+        return " ".join(output)

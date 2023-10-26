@@ -13,15 +13,15 @@ from tenet.breakpoints import BreakpointController
 from tenet.ui.trace_view import TraceDock
 
 from tenet.types import BreakpointType
-from tenet.trace.arch import ArchAMD64, ArchX86
+from tenet.trace.arch import ArchAMD64, ArchX86, ArchArm32
 from tenet.trace.reader import TraceReader
 from tenet.integration.api import disassembler, DisassemblerContextAPI
 
 logger = logging.getLogger("Tenet.Context")
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # context.py -- Plugin Database Context
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 #    The purpose of this file is to house and manage the plugin's
 #    disassembler database (eg, IDB/BNDB) specific runtime state.
@@ -29,7 +29,7 @@ logger = logging.getLogger("Tenet.Context")
 #    At a high level, a unique 'instance' of the plugin runtime & subsystems
 #    are initialized for each opened database in supported disassemblers. The
 #    plugin context object acts a bit like the database specific plugin core.
-# 
+#
 #    For example, it is possible for multiple databases to be open at once
 #    in the Binary Ninja disassembler. Each opened database will have a
 #    unique plugin context object created and used to manage state, UI,
@@ -39,6 +39,7 @@ logger = logging.getLogger("Tenet.Context")
 #    at any given time (... at least at the time of writing) but that does
 #    not change how this context system works under the hood.
 #
+
 
 class TenetContext(object):
     """
@@ -50,12 +51,23 @@ class TenetContext(object):
         self.core = core
         self.db = db
 
-        # select a trace arch based on the binary the disassmbler has loaded
-        if disassembler[self].is_64bit():
-            self.arch = ArchAMD64()
+        # select a trace arch based on the binary the disassembler has loaded
+
+        if disassembler[self].get_processor_type().lower() == "arm":
+            if disassembler[self].is_64bit():
+                raise NotImplementedError("ARM64 is not yet supported")
+            else:
+                self.arch = ArchArm32()
+        elif disassembler[self].get_processor_type().lower() == "metapc":
+            if disassembler[self].is_64bit():
+                self.arch = ArchAMD64()
+            else:
+                self.arch = ArchX86()
         else:
-            self.arch = ArchX86()
-        
+            raise NotImplementedError(
+                "Unsupported disassembler processor type, supported: arm, metapc (x86/x64)"
+            )
+
         # this will hold the trace reader when a trace has been loaded
         self.reader = None
 
@@ -68,7 +80,7 @@ class TenetContext(object):
 
         # the directory to start the 'load trace file' dialog in
         self._last_directory = None
-        
+
         # whether the plugin subsystems have been created / started
         self._started = False
 
@@ -79,13 +91,14 @@ class TenetContext(object):
     def _auto_launch(self):
         """
         Automatically load a static trace file when the database has been opened.
-        
+
         NOTE/DEV: this is just to make it easier to test / develop / debug the
         plugin when developing it and should not be called under normal use.
         """
 
         def test_load():
             import ida_loader
+
             trace_filepath = ida_loader.get_plugin_options("Tenet")
             focus_window()
             self.load_trace(trace_filepath)
@@ -93,21 +106,21 @@ class TenetContext(object):
 
         def dev_launch():
             self._timer = QtCore.QTimer()
-            self._timer.singleShot(500, test_load) # delay to let things settle
+            self._timer.singleShot(500, test_load)  # delay to let things settle
 
         self.core._ui_hooks.ready_to_run = dev_launch
 
-    #-------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     # Properties
-    #-------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
 
     @property
     def palette(self):
         return self.core.palette
-    
-    #-------------------------------------------------------------------------
+
+    # -------------------------------------------------------------------------
     # Setup / Teardown
-    #-------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
 
     def start(self):
         """
@@ -129,10 +142,10 @@ class TenetContext(object):
         This will be called when the database or disassembler is closing.
         """
         self.close_trace()
-    
-    #-------------------------------------------------------------------------
+
+    # -------------------------------------------------------------------------
     # Public API
-    #-------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
 
     def trace_loaded(self):
         """
@@ -162,7 +175,9 @@ class TenetContext(object):
         if self.reader.analysis.slide != None:
             pmsg(f"- {self.reader.analysis.slide:08X} ASLR slide...")
         else:
-            disassembler.warning("Failed to automatically detect ASLR base!\n\nSee console for more info...")
+            disassembler.warning(
+                "Failed to automatically detect ASLR base!\n\nSee console for more info..."
+            )
             pmsg(" +------------------------------------------------------")
             pmsg(" |- ERROR: Failed to detect ASLR base for this trace.")
             pmsg(" |       ---------------------------------------     ")
@@ -226,7 +241,7 @@ class TenetContext(object):
 
         # misc / final cleanup
         self.breakpoints.reset()
-        #self.reader.close()
+        # self.reader.close()
 
         self.reader = None
 
@@ -239,19 +254,20 @@ class TenetContext(object):
         matter much right now but this should be moved in the future.
         """
         import ida_kernwin
+
         self.registers.show(position=ida_kernwin.DP_RIGHT)
 
-        #self.breakpoints.dockable.set_dock_position("CPU Registers", ida_kernwin.DP_BOTTOM)
-        #self.breakpoints.dockable.show()
+        # self.breakpoints.dockable.set_dock_position("CPU Registers", ida_kernwin.DP_BOTTOM)
+        # self.breakpoints.dockable.show()
 
-        #ida_kernwin.activate_widget(ida_kernwin.find_widget("Output window"), True)
-        #ida_kernwin.set_dock_pos("Output window", None, ida_kernwin.DP_BOTTOM)
-        #ida_kernwin.set_dock_pos("IPython Console", "Output", ida_kernwin.DP_INSIDE)
+        # ida_kernwin.activate_widget(ida_kernwin.find_widget("Output window"), True)
+        # ida_kernwin.set_dock_pos("Output window", None, ida_kernwin.DP_BOTTOM)
+        # ida_kernwin.set_dock_pos("IPython Console", "Output", ida_kernwin.DP_INSIDE)
 
-        #self.memory.dockable.set_dock_position("Output window", ida_kernwin.DP_TAB | ida_kernwin.DP_BEFORE)
+        # self.memory.dockable.set_dock_position("Output window", ida_kernwin.DP_TAB | ida_kernwin.DP_BEFORE)
         self.memory.show("Output window", ida_kernwin.DP_TAB | ida_kernwin.DP_BEFORE)
 
-        #self.stack.dockable.set_dock_position("Memory View", ida_kernwin.DP_RIGHT)
+        # self.stack.dockable.set_dock_position("Memory View", ida_kernwin.DP_RIGHT)
         self.stack.show("Memory View", ida_kernwin.DP_RIGHT)
 
         mw = get_qmainwindow()
@@ -260,10 +276,10 @@ class TenetContext(object):
 
         # trigger update check
         self.core.check_for_update()
-    
-    #-------------------------------------------------------------------------
+
+    # -------------------------------------------------------------------------
     # Integrated UI Event Handlers
-    #-------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
 
     def interactive_load_trace(self, reloading=False):
         """
@@ -293,9 +309,9 @@ class TenetContext(object):
         #
         # if we are 're-loading', we are loading over an existing trace, so
         # there should already be plugin UI elements visible and active.
-        # 
+        #
         # do not attempt to show / re-position the UI elements as they may
-        # have been moved by the user from their default positions into 
+        # have been moved by the user from their default positions into
         # locations that they prefer
         #
 
@@ -304,7 +320,7 @@ class TenetContext(object):
 
         # show the plugin UI elements, and dock its windows as appropriate
         self.show_ui()
-        
+
     def interactive_next_execution(self):
         """
         Handle UI actions for seeking to the next execution of the selected address.
@@ -357,7 +373,7 @@ class TenetContext(object):
         """
         Handle a trace reader event indicating that the current IDX has changed.
 
-        This will make the disassembler track with the PC/IP of the trace reader. 
+        This will make the disassembler track with the PC/IP of the trace reader.
         """
         dctx = disassembler[self]
 
@@ -378,7 +394,7 @@ class TenetContext(object):
         if not dctx.is_mapped(bin_address):
             last_good_idx = self.reader.analysis.get_prev_mapped_idx(idx)
             if last_good_idx == -1:
-                return # navigation is just not gonna happen...
+                return  # navigation is just not gonna happen...
 
             # fetch the last instruction pointer to fall within the trace
             last_good_trace_address = self.reader.get_ip(last_good_idx)
@@ -393,7 +409,7 @@ class TenetContext(object):
     def _select_trace_file(self):
         """
         Prompt a file selection dialog, returning file selections.
-        
+
         This will save & reuses the last known directory for subsequent calls.
         """
 
@@ -402,10 +418,7 @@ class TenetContext(object):
 
         # create & configure a Qt File Dialog for immediate use
         file_dialog = QtWidgets.QFileDialog(
-            None,
-            'Open trace file',
-            self._last_directory,
-            'All Files (*.*)'
+            None, "Open trace file", self._last_directory, "All Files (*.*)"
         )
         file_dialog.setFileMode(QtWidgets.QFileDialog.ExistingFiles)
 

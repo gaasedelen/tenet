@@ -2,9 +2,9 @@ from tenet.ui import *
 from tenet.util.misc import register_callback, notify_callback
 from tenet.integration.api import DockableWindow, disassembler
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # registers.py -- Register Controller
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 #    The purpose of this file is to house the 'headless' components of the
 #    registers window and its underlying functionality. This is split into a
@@ -14,6 +14,7 @@ from tenet.integration.api import DockableWindow, disassembler
 #    'IDX Shell' as it is kind of attached to the register view and not big
 #    enough to demand its own seperate structuring ... yet
 #
+
 
 class RegisterController(object):
     """
@@ -43,7 +44,7 @@ class RegisterController(object):
             return
 
         # the UI has already been created, and is also visible. nothing to do
-        if (self.dockable and self.dockable.visible):
+        if self.dockable and self.dockable.visible:
             return
 
         #
@@ -63,7 +64,7 @@ class RegisterController(object):
 
         if self.dockable:
             new_dockable.copy_dock_position(self.dockable)
-        elif (target or position):
+        elif target or position:
             new_dockable.set_dock_position(target, position)
 
         # make the dockable/widget visible
@@ -76,7 +77,7 @@ class RegisterController(object):
         """
 
         # if there is no view/dockable, then there's nothing to try and hide
-        if not(self.view and self.dockable):
+        if not (self.view and self.dockable):
             return
 
         # hide the dockable, and drop references to the widgets
@@ -180,7 +181,7 @@ class RegisterController(object):
                 return
 
             # a 'command' / alias idx was entered into the shell ('!...' prefix)
-            if expression[0] == '!':
+            if expression[0] == "!":
                 self._handle_command(expression[1:])
                 return
 
@@ -189,7 +190,7 @@ class RegisterController(object):
             # -- e.g '5,218,121'
             #
 
-            idx_str = expression.replace(',', '')
+            idx_str = expression.replace(",", "")
             try:
                 target_idx = int(idx_str)
             except:
@@ -217,7 +218,7 @@ class RegisterController(object):
             eg: !0, or !100 to skip to the start/end of trace
         """
         try:
-            target_percent = float(expression) # float, so you could even do 42.1%
+            target_percent = float(expression)  # float, so you could even do 42.1%
         except:
             return False
 
@@ -229,7 +230,7 @@ class RegisterController(object):
         """
         Handle a seek to the last mapped address.
         """
-        if expression != 'last':
+        if expression != "last":
             return False
 
         last_idx = self.reader.trace.length - 1
@@ -240,7 +241,7 @@ class RegisterController(object):
         if not dctx.is_mapped(rebased_ip):
             last_good_idx = self.reader.analysis.get_prev_mapped_idx(last_idx)
             if last_good_idx == -1:
-                return False # navigation is just not gonna happen...
+                return False  # navigation is just not gonna happen...
             last_idx = last_good_idx
 
         # seek to the last known / good idx that is mapped within the disassembler
@@ -262,20 +263,6 @@ class RegisterController(object):
             return
         self.view.refresh()
 
-    def _idx_changed(self, idx):
-        """
-        The trace position has been changed.
-        """
-        self.model.idx = idx
-        self.set_registers(self.reader.registers, self.reader.trace.get_reg_delta(idx).keys())
-
-    def _breakpoints_changed(self):
-        """
-        Handle breakpoints changed event.
-        """
-        if not self.view:
-            return
-        self.view.refresh()
 
 class RegistersModel(object):
     """
@@ -286,15 +273,15 @@ class RegistersModel(object):
         self._pctx = pctx
         self.reset()
 
-        #----------------------------------------------------------------------
+        # ----------------------------------------------------------------------
         # Callbacks
-        #----------------------------------------------------------------------
+        # ----------------------------------------------------------------------
 
         self._registers_changed_callbacks = []
 
-    #----------------------------------------------------------------------
+    # ----------------------------------------------------------------------
     # Properties
-    #----------------------------------------------------------------------
+    # ----------------------------------------------------------------------
 
     @property
     def arch(self):
@@ -310,9 +297,9 @@ class RegistersModel(object):
         """
         return self._pctx.breakpoints.model.bp_exec
 
-    #----------------------------------------------------------------------
+    # ----------------------------------------------------------------------
     # Public
-    #----------------------------------------------------------------------
+    # ----------------------------------------------------------------------
 
     def reset(self):
 
@@ -359,9 +346,9 @@ class RegistersModel(object):
         # notify the UI / listeners of the model that an update occurred
         self._notify_registers_changed()
 
-    #----------------------------------------------------------------------
+    # ----------------------------------------------------------------------
     # Callbacks
-    #----------------------------------------------------------------------
+    # ----------------------------------------------------------------------
 
     def registers_changed(self, callback):
         """

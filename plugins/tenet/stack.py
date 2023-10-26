@@ -4,18 +4,19 @@ from tenet.ui import *
 from tenet.hex import HexController
 from tenet.types import HexType, AuxType
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # stack.py -- Stack Dump Controller
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 #    The purpose of this file is to house the 'headless' components of the
 #    stack dump window and its underlying functionality. This is split into
-#    a model and controller component, of a typical 'MVC' design pattern. 
+#    a model and controller component, of a typical 'MVC' design pattern.
 #
 #    The stack dump window abstracts from a simple hex dump. We use the code
 #    below to configure our underlying hex dump to appear more like a typical
 #    stack view might instead.
 #
+
 
 class StackController(HexController):
     """
@@ -39,7 +40,7 @@ class StackController(HexController):
         """
         Follow the pointer at a given stack address in the memory dump.
         """
-        POINTER_SIZE = self.pctx.reader.arch.POINTER_SIZE 
+        POINTER_SIZE = self.pctx.reader.arch.POINTER_SIZE
 
         # align the given stack address (which we will read..)
         stack_address &= ~(POINTER_SIZE - 1)
@@ -53,8 +54,8 @@ class StackController(HexController):
 
         # attempt to carve the data and validity mask from the stack model
         try:
-            data = self.model.data[relative_index:relative_index+POINTER_SIZE]
-            mask = self.model.mask[relative_index:relative_index+POINTER_SIZE]
+            data = self.model.data[relative_index : relative_index + POINTER_SIZE]
+            mask = self.model.mask[relative_index : relative_index + POINTER_SIZE]
         except:
             return False
 
@@ -64,10 +65,10 @@ class StackController(HexController):
 
         # unpack the carved data as a pointer
         parsed_address = struct.unpack("I" if POINTER_SIZE == 4 else "Q", data)[0]
-        
+
         # navigate the memory dump window to the 'pointer' we carved off the stack
         self.pctx.memory.navigate(parsed_address)
-    
+
     def _idx_changed(self, idx):
         """
         Override the default hex view idx changed event handler.

@@ -6,9 +6,9 @@ from tenet.util.misc import register_callback, notify_callback
 from tenet.integration.api import DockableWindow
 from tenet.integration.api import disassembler
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # breakpoints.py -- Breakpoint Controller
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 #    The purpose of this file is to house the 'headless' components of the
 #    breakpoints window and its underlying functionality. This is split into
@@ -23,6 +23,7 @@ from tenet.integration.api import disassembler
 #    a time. I'll probably raise this 'limit' when a proper gui is made
 #    for managing and differentiating between breakpoints...
 #
+
 
 class BreakpointController(object):
     """
@@ -146,6 +147,7 @@ class BreakpointController(object):
             dctx.delete_breakpoint(address)
         self._ignore_signals = False
 
+
 class BreakpointModel(object):
     """
     The Breakpoint Model (Data)
@@ -154,9 +156,9 @@ class BreakpointModel(object):
     def __init__(self):
         self.reset()
 
-        #----------------------------------------------------------------------
+        # ----------------------------------------------------------------------
         # Callbacks
-        #----------------------------------------------------------------------
+        # ----------------------------------------------------------------------
 
         self._breakpoints_changed_callbacks = []
 
@@ -172,15 +174,13 @@ class BreakpointModel(object):
         Return an iterable list of all memory breakpoints.
         """
         bps = itertools.chain(
-            self.bp_read.values(),
-            self.bp_write.values(),
-            self.bp_access.values()
+            self.bp_read.values(), self.bp_write.values(), self.bp_access.values()
         )
         return bps
 
-    #----------------------------------------------------------------------
+    # ----------------------------------------------------------------------
     # Callbacks
-    #----------------------------------------------------------------------
+    # ----------------------------------------------------------------------
 
     def breakpoints_changed(self, callback):
         """

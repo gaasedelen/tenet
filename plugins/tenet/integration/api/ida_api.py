@@ -29,9 +29,10 @@ from ...util.misc import is_mainthread
 
 logger = logging.getLogger("Tenet.API.IDA")
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Utils
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 def execute_sync(function, sync_type):
     """
@@ -61,11 +62,14 @@ def execute_sync(function, sync_type):
 
         # return the output of the synchronized execution
         return output[0]
+
     return wrapper
 
-#------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 # Disassembler Core API (universal)
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 class IDACoreAPI(DisassemblerCoreAPI):
     NAME = "IDA"
@@ -86,17 +90,17 @@ class IDACoreAPI(DisassemblerCoreAPI):
         self._version_minor = minor
         self._version_patch = 0
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # Properties
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
 
     @property
     def headless(self):
         return ida_kernwin.cvar.batch
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # Synchronization Decorators
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
 
     @staticmethod
     def execute_read(function):
@@ -110,9 +114,9 @@ class IDACoreAPI(DisassemblerCoreAPI):
     def execute_ui(function):
         return execute_sync(function, ida_kernwin.MFF_FAST)
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # API Shims
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
 
     def get_disassembler_user_directory(self):
         return ida_diskio.get_user_idadir()
@@ -134,11 +138,11 @@ class IDACoreAPI(DisassemblerCoreAPI):
         viewer_widget = ida_kernwin.PluginForm.TWidgetToPyQtWidget(viewer_twidget)
 
         # fetch the background color property
-        #viewer.Show() # TODO: re-enable!
+        # viewer.Show() # TODO: re-enable!
         color = viewer_widget.property("line_bg_default")
 
         # destroy the view as we no longer need it
-        #viewer.Close()
+        # viewer.Close()
 
         # return the color
         return color
@@ -154,9 +158,9 @@ class IDACoreAPI(DisassemblerCoreAPI):
     def message(self, message):
         print(message)
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # UI API Shims
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
 
     def create_dockable(self, window_title, widget):
 
@@ -171,35 +175,35 @@ class IDACoreAPI(DisassemblerCoreAPI):
         # return the dockable QtWidget / container
         return dockable
 
-#------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 # Disassembler Context API (database-specific)
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 class IDAContextAPI(DisassemblerContextAPI):
-
     def __init__(self, dctx):
         super(IDAContextAPI, self).__init__(dctx)
 
     @property
     def busy(self):
-        return not(ida_auto.auto_is_ok())
+        return not (ida_auto.auto_is_ok())
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # API Shims
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
 
     @IDACoreAPI.execute_read
     def get_current_address(self):
         return ida_kernwin.get_screen_ea()
 
-    def get_processor_type(self):
-        ## get the target arch, PLFM_386, PLFM_ARM, etc # TODO
-        #arch = idaapi.ph_get_id()
-        pass
+    def get_processor_type(self) -> str:
+        inf = ida_idaapi.get_inf_structure()
+        return inf.procname
 
     def is_64bit(self):
         inf = ida_idaapi.get_inf_structure()
-        #target_filetype = inf.filetype
+        # target_filetype = inf.filetype
         return inf.is_64bit()
 
     def is_call_insn(self, address):
@@ -218,20 +222,22 @@ class IDAContextAPI(DisassemblerContextAPI):
 
             # fetch code segments
             seg = ida_segment.getseg(seg_address)
-            if seg.sclass != ida_segment.SEG_CODE:
+            if ida_segment.get_segm_class(seg) != "CODE":
                 continue
 
             current_address = seg_address
             end_address = seg.end_ea
 
+            # print(f"Segment {seg.start_ea:08X} --> {seg.end_ea:08X} CODE")
+
             # save the address of each instruction in the segment
             while current_address < end_address:
                 current_address = ida_bytes.next_head(current_address, end_address)
+                # print(f"{hex(current_address)} -> {ida_bytes.get_flags(current_address)}")
                 if ida_bytes.is_code(ida_bytes.get_flags(current_address)):
                     instruction_addresses.append(current_address)
 
-        #    print(f"Seg {seg.start_ea:08X} --> {seg.end_ea:08X} CODE")
-        #print(f" -- {len(instruction_addresses):,} instructions found")
+        # print(f" -- {len(instruction_addresses):,} instructions found")
 
         return instruction_addresses
 
@@ -298,7 +304,9 @@ class IDAContextAPI(DisassemblerContextAPI):
         CENTER_AROUND_LINE_INDEX = 20
 
         if widget:
-            return ida_kernwin.ea_viewer_history_push_and_jump(widget, address, 0, CENTER_AROUND_LINE_INDEX, 0)
+            return ida_kernwin.ea_viewer_history_push_and_jump(
+                widget, address, 0, CENTER_AROUND_LINE_INDEX, 0
+            )
 
         # ehh, whatever.. just let IDA navigate to yolo
         else:
@@ -309,16 +317,18 @@ class IDAContextAPI(DisassemblerContextAPI):
 
     def set_function_name_at(self, function_address, new_name):
         ida_name.set_name(function_address, new_name, ida_name.SN_NOWARN)
-    
+
     def set_breakpoint(self, address):
         ida_dbg.add_bpt(address)
 
     def delete_breakpoint(self, address):
         ida_dbg.del_bpt(address)
 
-#------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 # HexRays Util
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 def hexrays_available():
     """
@@ -326,9 +336,11 @@ def hexrays_available():
     """
     try:
         import ida_hexrays
+
         return ida_hexrays.init_hexrays_plugin()
     except ImportError:
         return False
+
 
 def map_line2citem(decompilation_text):
     """
@@ -361,6 +373,7 @@ def map_line2citem(decompilation_text):
         line2citem[line_number] = lex_citem_indexes(line_text)
 
     return line2citem
+
 
 def map_line2node(cfunc, metadata, line2citem):
     """
@@ -415,7 +428,7 @@ def map_line2node(cfunc, metadata, line2citem):
 
             # address not mapped to a node... weird. continue to the next citem
             if not node:
-                #logger.warning("Failed to map node to basic block")
+                # logger.warning("Failed to map node to basic block")
                 continue
 
             #
@@ -435,6 +448,7 @@ def map_line2node(cfunc, metadata, line2citem):
 
     # all done, return the computed map
     return line2node
+
 
 def lex_citem_indexes(line):
     """
@@ -472,7 +486,7 @@ def lex_citem_indexes(line):
                 # in this context, it is actually the index number of a citem
                 #
 
-                citem_index = int(line[i:i+idaapi.COLOR_ADDR_SIZE], 16)
+                citem_index = int(line[i : i + idaapi.COLOR_ADDR_SIZE], 16)
                 i += idaapi.COLOR_ADDR_SIZE
 
                 # save the extracted citem index
@@ -487,8 +501,8 @@ def lex_citem_indexes(line):
     # return all the citem indexes extracted from this line of text
     return indexes
 
-class DockableWindow(ida_kernwin.PluginForm):
 
+class DockableWindow(ida_kernwin.PluginForm):
     def __init__(self, title, widget):
         super(DockableWindow, self).__init__()
         self.title = title
@@ -502,7 +516,7 @@ class DockableWindow(ida_kernwin.PluginForm):
             self.__dock_filter = IDADockSizeHack()
 
     def OnCreate(self, form):
-        #print("Creating", self.title)
+        # print("Creating", self.title)
         self.parent = self.FormToPyQtWidget(form)
 
         layout = QtWidgets.QVBoxLayout()
@@ -515,7 +529,7 @@ class DockableWindow(ida_kernwin.PluginForm):
 
     def OnClose(self, foo):
         self.visible = False
-        #print("Closing", self.title)
+        # print("Closing", self.title)
 
     def __dock_size_hack(self):
         if self.widget.minimumWidth() == 0:
@@ -531,7 +545,7 @@ class DockableWindow(ida_kernwin.PluginForm):
 
         if ida_pro.IDA_SDK_VERSION < 760:
             WOPN_SZHINT = 0x200
-        
+
             # create the dockable widget, without actually showing it
             self.Show(self.title, options=ida_kernwin.PluginForm.WOPN_CREATE_ONLY)
 
@@ -565,6 +579,7 @@ class DockableWindow(ida_kernwin.PluginForm):
     def copy_dock_position(self, other):
         self._dock_target = other._dock_target
         self._dock_position = other._dock_position
+
 
 class IDADockSizeHack(QtCore.QObject):
     def eventFilter(self, obj, event):
