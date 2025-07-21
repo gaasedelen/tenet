@@ -109,7 +109,7 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
 
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
-        self.setMinimumWidth(self._reg_pos[0] + self._default_width)
+        self.setMinimumWidth(int(self._reg_pos[0] + self._default_width))
         self.setMouseTracking(True)
 
         self._init_ctx_menu()
@@ -118,8 +118,8 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
         self.model.registers_changed(self.refresh)
 
     def sizeHint(self):
-        width = self._default_width
-        height = (len(self._reg_fields) + 2) * self._char_height # +2 for line break before IP, and after IP
+        width = int(self._default_width)
+        height = int((len(self._reg_fields) + 2) * self._char_height) # +2 for line break before IP, and after IP
         return QtCore.QSize(width, height)
 
     def _init_ctx_menu(self):
@@ -152,7 +152,7 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
         fm = QtGui.QFontMetricsF(self.font())
         name_size = fm.boundingRect('X'*common_count).size()
         value_size = fm.boundingRect('0' * (self.model.arch.POINTER_SIZE * 2)).size()
-        arrow_size = (int(value_size.height() * 0.70) & 0xFE) + 1
+        arrow_size = (int(value_size.height() * 0.70) | 1)
 
         # pre-compute the position of each register in the window
         for reg_name in regs:
@@ -162,24 +162,24 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
             if reg_name == self.model.arch.IP:
                 y += self._char_height
 
-            name_rect = QtCore.QRect(0, 0, name_size.width(), name_size.height())
-            name_rect.moveBottomLeft(QtCore.QPoint(name_x, y))
+            name_rect = QtCore.QRect(0, 0, int(name_size.width()), int(name_size.height()))
+            name_rect.moveBottomLeft(QtCore.QPoint(int(name_x), int(y)))
 
-            prev_rect = QtCore.QRect(0, 0, arrow_size, arrow_size)
-            next_rect = QtCore.QRect(0, 0, arrow_size, arrow_size)
+            prev_rect = QtCore.QRect(0, 0, int(arrow_size), int(arrow_size))
+            next_rect = QtCore.QRect(0, 0, int(arrow_size), int(arrow_size))
             arrow_rects = [prev_rect, next_rect]
 
             prev_x = name_x + name_size.width() + self._char_width
             prev_rect.moveCenter(name_rect.center())
-            prev_rect.moveLeft(prev_x)
+            prev_rect.moveLeft(int(prev_x))
 
             value_x = prev_x + prev_rect.width() + self._char_width
-            value_rect = QtCore.QRect(0, 0, value_size.width(), value_size.height())
-            value_rect.moveBottomLeft(QtCore.QPoint(value_x, y))
+            value_rect = QtCore.QRect(0, 0, int(value_size.width()), int(value_size.height()))
+            value_rect.moveBottomLeft(QtCore.QPoint(int(value_x), int(y)))
 
             next_x = value_x + value_size.width() + self._char_width
             next_rect.moveCenter(name_rect.center())
-            next_rect.moveLeft(next_x)
+            next_rect.moveLeft(int(next_x))
 
             # save the register shapes
             self._reg_fields[reg_name] = RegisterField(reg_name, name_rect, value_rect, arrow_rects)
@@ -274,8 +274,8 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
         if not self.model.registers:
             return QtCore.QSize(0, 0)
 
-        width = self._reg_pos[0] + self._default_width
-        height = len(self.model.registers) * self._char_height
+        width = int(self._reg_pos[0] + self._default_width)
+        height = int(len(self.model.registers) * self._char_height)
 
         return QtCore.QSize(width, height)
 

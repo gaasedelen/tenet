@@ -22,6 +22,7 @@ import ida_idaapi
 import ida_diskio
 import ida_kernwin
 import ida_segment
+import ida_ida
 
 from .api import DisassemblerCoreAPI, DisassemblerContextAPI
 from ...util.qt import *
@@ -198,9 +199,9 @@ class IDAContextAPI(DisassemblerContextAPI):
         pass
 
     def is_64bit(self):
-        inf = ida_idaapi.get_inf_structure()
-        #target_filetype = inf.filetype
-        return inf.is_64bit()
+        # The get_inf_structure() function is deprecated in newer IDA versions.
+        # The 'inf' object is now directly accessible via ida_ida.
+        return ida_ida.inf_is_64bit()
 
     def is_call_insn(self, address):
         insn = ida_ua.insn_t()

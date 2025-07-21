@@ -135,8 +135,8 @@ static VOID OnThreadStart(THREADID tid, CONTEXT* ctxt, INT32 flags, VOID* v)
 
     char filename[128] = {};
     sprintf(filename, "%s.%u.log", KnobOutputFilePrefix.Value().c_str(), tid);
-    data->m_trace->open(filename);
-    *data->m_trace << std::hex;
+    // NOTE: We do not open the file here because that can cause a deadlock.
+    // Instead, we will open it lazily on the first call to record_diff.
 
     // Save the recently created thread.
     PIN_GetLock(&context.m_thread_lock, 1);
@@ -221,7 +221,17 @@ VOID record_diff(const CONTEXT * cpu, ADDRINT pc, VOID* v)
 
     ADDRINT val;
     auto OutFile = data->m_trace;
-    
+
+    // The file stream is not opened in OnThreadStart because it can cause a deadlock.
+    // We open it here on first use instead.
+    if (!OutFile->is_open())
+    {
+        char filename[128] = {};
+        sprintf(filename, "%s.%u.log", KnobOutputFilePrefix.Value().c_str(), tid);
+        OutFile->open(filename, std::ios_base::out | std::ios_base::binary);
+        *OutFile << std::hex;
+    }
+
     for (int reg = (int)REG_GR_BASE; reg <= (int)REG_GR_LAST; ++reg) {
 
         // fetch the current register value
@@ -291,6 +301,7 @@ VOID record_diff(const CONTEXT * cpu, ADDRINT pc, VOID* v)
 VOID record_read(THREADID tid, ADDRINT access_addr, UINT32 access_size, VOID * v) {
     auto& context = *reinterpret_cast<ToolContext*>(v);
     ThreadData* data = context.GetThreadLocalData(tid);
+    if (!data) return;
     data->mem_r_addr = access_addr;
     data->mem_r_size = access_size;
 }
@@ -298,6 +309,7 @@ VOID record_read(THREADID tid, ADDRINT access_addr, UINT32 access_size, VOID * v
 VOID record_read2(THREADID tid, ADDRINT access_addr, UINT32 access_size, VOID * v) {
     auto& context = *reinterpret_cast<ToolContext*>(v);
     ThreadData* data = context.GetThreadLocalData(tid);
+    if (!data) return;
     data->mem_r2_addr = access_addr;
     data->mem_r2_size = access_size;
 }
@@ -305,6 +317,7 @@ VOID record_read2(THREADID tid, ADDRINT access_addr, UINT32 access_size, VOID * 
 VOID record_write(THREADID tid, ADDRINT access_addr, UINT32 access_size, VOID * v) {
     auto& context = *reinterpret_cast<ToolContext*>(v);
     ThreadData* data = context.GetThreadLocalData(tid);
+    if (!data) return;
     data->mem_w_addr = access_addr;
     data->mem_w_size = access_size;
 }
@@ -387,7 +400,7 @@ static VOID Fini(INT32 code, VOID *v)
     g_log->close();
 }
 
-int main(int argc, char * argv[]) {
+int main(int argc, char* argv[]) {
     
     // Initialize symbol processing
     PIN_InitSymbols();

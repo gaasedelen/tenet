@@ -1,0 +1,94 @@
+{
+    "name": "Horizon",
+
+    "colors":
+    {
+        "black":          [  0,   0,   0],
+        "white":          [255, 255, 255],
+
+        "lightest_gray":  [241, 241, 241],
+        "lighter_gray":   [210, 210, 210],
+        "light_gray":     [160, 160, 160],
+        "gray":           [ 80,  80,  80],
+        "dark_gray":      [ 40,  40,  40],
+        "darkest_gray":   [ 25,  25,  25],
+
+        "true_red":       [255,   0,   0],
+        "lightest_red":   [255,  80,  80],
+        "light_red":      [170,  57,  57],
+        "red":            [118,   0,   0],
+        "dark_red":       [ 85,   0,   0],
+
+        "orange":         [255, 165,   0],
+
+        "true_yellow":    [255, 255,   0],
+        "yellow":         [255, 193,   7],
+
+        "true_green":     [  0, 255,   0],
+        "light_green":    [128, 255, 128],
+
+        "purple":         [150,  20, 150],
+        "dark_purple":    [ 38,  23,  88],
+        
+        "light_blue":     [ 33, 159, 255],
+        "blue":           [ 30, 136, 229],
+        "dark_blue":      [ 58,  58, 128]
+
+    },
+
+    "fields":
+    {
+        "navigation_selection_bg":       "lightest_red",
+        "navigation_selection_fg":       "white",
+        "navigation_selection_faded_fg": "light_red",
+
+        "standard_selection_bg":         "lighter_gray",
+        "standard_selection_fg":         "black",
+        "standard_selection_faded_fg":   "light_gray",
+
+        "reg_bg": "white",
+
+        "reg_name_fg":               "black",
+        "reg_value_fg":              "black",
+        "reg_changed_trace_fg":      "true_red",
+        "reg_changed_navigation_fg": "orange",
+
+        "hex_text_fg":       "black",
+        "hex_text_faded_fg": "light_gray",
+
+        "hex_address_fg":    "darkest_gray",
+        "hex_address_bg":    "lightest_gray",
+        
+        "hex_data_bg":       "white",
+        "hex_separator":     "black",
+
+        "trace_bedrock":     "dark_gray",
+        "trace_unmapped":    "light_gray",
+        "trace_instruction": "dark_blue",
+        "trace_border":      "gray",
+
+        "trace_cell_wall": "light_gray",
+        "trace_cell_wall_contrast": "black",
+
+        "trace_cursor":           "true_red",
+        "trace_cursor_border":    "black",
+        "trace_cursor_highlight": "true_green",
+        
+        "trace_selection":        "true_green",
+        "trace_selection_border": "true_green",
+        
+        "breakpoint": "lightest_red",
+        "mem_read_bg": "yellow",
+        "mem_read_fg": "black",
+        "mem_write_bg": "light_blue",
+        "mem_write_fg": "white",
+
+        "trail_backward": "lightest_red",
+        "trail_current":  "light_green",
+        "trail_forward":  "light_blue",
+
+        "arrow_prev": "lightest_red",
+        "arrow_next": "light_blue",
+        "arrow_idle": "light_gray"
+    }
+}

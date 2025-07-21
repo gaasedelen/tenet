@@ -479,7 +479,7 @@ class TraceBar(QtWidgets.QWidget):
         #assert self._cell_spacing % 2 == 0
 
         # compute the y position of the 'first' cell
-        y += self._cell_spacing / 2   # pad out from top
+        y += self._cell_spacing // 2   # pad out from top
         y += self._cell_border        # top border of cell
 
         # compute the y position of any given cell after the first
@@ -953,7 +953,7 @@ class TraceBar(QtWidgets.QWidget):
                 painter.setBrush(self.pctx.palette.trace_unmapped)
 
             y = self._idx2pos(idx)
-            painter.drawRect(x, y, w, h)
+            painter.drawRect(int(x), int(y), int(w), int(h))
 
     def _draw_highlights(self):
         """
@@ -1008,7 +1008,7 @@ class TraceBar(QtWidgets.QWidget):
                 y = self._idx2pos(idx) + self._cell_border
 
                 # draw cell body
-                painter.drawRect(viz_x, y, viz_w, h)
+                painter.drawRect(int(viz_x), int(y), int(viz_w), int(h))
 
     def _draw_highlights_trace(self, painter):
         """
@@ -1090,13 +1090,13 @@ class TraceBar(QtWidgets.QWidget):
             self._painter_cursor.setBrush(self.pctx.palette.trace_cursor_highlight)
 
             if draw_reader_cursor:
-                self._painter_cursor.drawRect(viz_x, cell_y, viz_w, cell_body_height)
+                self._painter_cursor.drawRect(int(viz_x), int(cell_y), int(viz_w), int(cell_body_height))
 
             # cursor hover highlighting an event
             if self._hovered_idx != INVALID_IDX:
                 hovered_y = self._idx2pos(self._hovered_idx)
                 hovered_cell_y = hovered_y + self._cell_border
-                self._painter_cursor.drawRect(viz_x, hovered_cell_y, viz_w, cell_body_height)
+                self._painter_cursor.drawRect(int(viz_x), int(hovered_cell_y), int(viz_w), int(cell_body_height))
 
         # draw the user cursor in dense/landscape mode
         else:
@@ -1172,7 +1172,7 @@ class TraceBar(QtWidgets.QWidget):
         h = end_y - start_y
 
         # draw the screen door / selection rect
-        self._painter_selection.drawRect(x, y, w, h)
+        self._painter_selection.drawRect(int(x), int(y), int(w), int(h))
 
     def _draw_border(self):
         """
