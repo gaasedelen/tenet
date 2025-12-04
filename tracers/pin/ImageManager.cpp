@@ -57,6 +57,10 @@ BOOL ImageManager::isInterestingAddress(ADDRINT addr)
         }
 
         auto i = images.upper_bound(LoadedImage("", addr));
+        if (i == images.begin()) {
+            PIN_RWMutexUnlock(&images_lock);
+            return false;
+        }
         --i;
 
         // If the instruction address does not fall inside a valid white listed image, bail out.
